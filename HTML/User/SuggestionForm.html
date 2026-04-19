@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Campus Voice AI | Digital Suggestion Box</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+	<link rel="stylesheet" href="../../CSS/user.css" />
+</head>
+<body class="suggestion-wireframe-page">
+	<main class="suggestion-wireframe">
+		<section class="tab-panel" data-panel="suggestions" id="suggestions-panel">
+			<div class="wireframe-card wireframe-card--suggestion">
+				<div class="wireframe-left">
+					<div class="wireframe-brand">
+						<div class="wireframe-mark" aria-hidden="true">
+							<svg viewBox="0 0 24 24" role="img" aria-label="Campus Voice logo">
+								<path d="M6.5 16.2c-1.2-1.2-1.9-2.8-1.9-4.5 0-4.1 3.5-7.5 7.8-7.5s7.8 3.4 7.8 7.5-3.5 7.5-7.8 7.5c-.8 0-1.6-.1-2.3-.3L6 20.1l.5-3.9Z" />
+							</svg>
+						</div>
+						<div class="wireframe-brand-text">Campus Voice</div>
+					</div>
+
+					<h1 class="wireframe-headline">
+						<span>Send a</span>
+						<span>suggestion to</span>
+						<strong>COMPUTER</strong>
+						<strong>SOCIETY</strong>
+					</h1>
+
+					<p class="wireframe-copy">Your feedback is anonymous and helps improve classes, campus services, and student life.</p>
+				</div>
+
+				<form class="wireframe-panel wireframe-panel--form" id="suggestionForm" novalidate>
+					<div class="panel-caption">Your insightful suggestion</div>
+					<textarea id="suggestion" maxlength="500" placeholder="Share your ideas for your classes, facilities or student life..."></textarea>
+					<div class="form-meta-row">
+						<div class="listen-pill">
+							<span class="listen-dot"></span>
+							AI is listening! It would help to categorize your feedback.
+						</div>
+						<div class="char-count"><span id="charCount">0</span>/500</div>
+					</div>
+					<button class="send-btn" id="sendButton" type="submit">Send a Suggestion</button>
+
+					<div class="category-block">
+						<div class="category-title">System Categories</div>
+						<div class="chip-grid">
+							<span class="chip">Classroom</span>
+							<span class="chip">Campus Facilities</span>
+							<span class="chip">Academic Services</span>
+							<span class="chip">Campus Safety</span>
+							<span class="chip">Admin Process</span>
+						</div>
+					</div>
+				</form>
+			</div>
+		</section>
+
+		<section class="tab-panel" data-panel="public" id="public-panel" hidden>
+			<div class="wireframe-card wireframe-card--public">
+				<div class="wireframe-left">
+					<div class="wireframe-brand">
+						<div class="wireframe-mark" aria-hidden="true">
+							<svg viewBox="0 0 24 24" role="img" aria-label="Campus Voice logo">
+								<path d="M6.5 16.2c-1.2-1.2-1.9-2.8-1.9-4.5 0-4.1 3.5-7.5 7.8-7.5s7.8 3.4 7.8 7.5-3.5 7.5-7.8 7.5c-.8 0-1.6-.1-2.3-.3L6 20.1l.5-3.9Z" />
+							</svg>
+						</div>
+						<div class="wireframe-brand-text">Campus Voice</div>
+					</div>
+
+					<h1 class="wireframe-headline wireframe-headline--public">
+						<span>The</span>
+						<span>suggestions</span>
+						<span>for</span>
+						<strong>COMPUTER</strong>
+						<strong>SOCIETY</strong>
+					</h1>
+
+					<p class="wireframe-copy wireframe-copy--public">This is the public pulse, where you could view the public status of their suggestion and other suggestions of the organization.</p>
+				</div>
+
+				<section class="wireframe-panel wireframe-panel--stats" aria-label="Public Status Dashboard">
+					<div class="panel-caption">Public Status Dashboard</div>
+
+					<div class="stats-grid">
+						<article class="status-card">
+							<div class="status-label">Community Impact</div>
+							<div class="status-value">50</div>
+							<div class="status-sub">Total of Voices heard</div>
+						</article>
+
+						<article class="status-card">
+							<div class="status-label">Top Category</div>
+							<div class="status-value">Events</div>
+							<div class="status-sub">45% of Total</div>
+						</article>
+
+						<article class="status-card">
+							<div class="status-label">Resolution Rate</div>
+							<div class="status-value">67%</div>
+							<div class="status-sub">Current Target: 80%</div>
+						</article>
+					</div>
+
+					<div class="chart-card">
+						<div class="chart-title">Top Concerns (AI Categorized)</div>
+						<div class="bar-chart" aria-hidden="true">
+							<div class="bar-group">
+								<div class="bar bar--events"></div>
+								<span>Events</span>
+							</div>
+							<div class="bar-group">
+								<div class="bar bar--classroom"></div>
+								<span>Classroom</span>
+							</div>
+							<div class="bar-group">
+								<div class="bar bar--facilities"></div>
+								<span>Facilities</span>
+							</div>
+							<div class="bar-group">
+								<div class="bar bar--safety"></div>
+								<span>Safety</span>
+							</div>
+							<div class="bar-group">
+								<div class="bar bar--academic"></div>
+								<span>Academic</span>
+							</div>
+							<div class="bar-group">
+								<div class="bar bar--admin"></div>
+								<span>Admin</span>
+							</div>
+						</div>
+					</div>
+
+					<div class="progress-card">
+						<div class="chart-title">Top Concerns (AI Categorized)</div>
+						<div class="progress-track">
+							<span class="progress progress--resolved"></span>
+							<span class="progress progress--acknowledged"></span>
+							<span class="progress progress--pending"></span>
+						</div>
+						<div class="progress-legend">
+							<span class="legend legend--resolved">Resolved (50)</span>
+							<span class="legend legend--acknowledged">Acknowledged (20)</span>
+							<span class="legend legend--pending">Pending (39)</span>
+						</div>
+					</div>
+
+					<div class="activity-card">
+						<div class="chart-title">Recent Activity</div>
+						<div class="activity-table-wrap">
+							<table class="activity-table">
+								<thead>
+									<tr>
+										<th>Time</th>
+										<th>Activity Description</th>
+										<th>AI Category</th>
+										<th>Status</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr>
+										<td>2 min</td>
+										<td>"A student submitted feedback regarding classroom equipment"</td>
+										<td>#Classroom</td>
+										<td>Processed</td>
+									</tr>
+									<tr>
+										<td>2 min</td>
+										<td>"A student submitted feedback regarding classroom equipment"</td>
+										<td>#Classroom</td>
+										<td>Processed</td>
+									</tr>
+									<tr>
+										<td>2 min</td>
+										<td>"A student submitted feedback regarding classroom equipment"</td>
+										<td>#Classroom</td>
+										<td>Processed</td>
+									</tr>
+									<tr>
+										<td>2 min</td>
+										<td>"A student submitted feedback regarding classroom equipment"</td>
+										<td>#Classroom</td>
+										<td>Processed</td>
+									</tr>
+									<tr>
+										<td>2 min</td>
+										<td>"A student submitted feedback regarding classroom equipment"</td>
+										<td>#Classroom</td>
+										<td>Processed</td>
+									</tr>
+									<tr>
+										<td>2 min</td>
+										<td>"A student submitted feedback regarding classroom equipment"</td>
+										<td>#Classroom</td>
+										<td>Processed</td>
+									</tr>
+									<tr>
+										<td>2 min</td>
+										<td>"A student submitted feedback regarding classroom equipment"</td>
+										<td>#Classroom</td>
+										<td>Processed</td>
+									</tr>
+									<tr>
+										<td>2 min</td>
+										<td>"A student submitted feedback regarding classroom equipment"</td>
+										<td>#Classroom</td>
+										<td>Processed</td>
+									</tr>
+									<tr>
+										<td>2 min</td>
+										<td>"A student submitted feedback regarding classroom equipment"</td>
+										<td>#Classroom</td>
+										<td>Processed</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</section>
+			</div>
+		</section>
+
+		<nav class="wireframe-tabs" aria-label="Suggestion page sections">
+			<button class="wireframe-tab is-active" type="button" data-tab-target="suggestions" aria-controls="suggestions-panel" aria-selected="true">SUGGESTION</button>
+			<button class="wireframe-tab" type="button" data-tab-target="public" aria-controls="public-panel" aria-selected="false">PUBLIC STAT</button>
+		</nav>
+	</main>
+
+	<script src="../../JS/script.js"></script>
+</body>
+</html>

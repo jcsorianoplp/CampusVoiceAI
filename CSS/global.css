@@ -1,0 +1,72 @@
+:root {
+	--bg-1: #e8f0ff;
+	--bg-2: #d8e8ff;
+	--surface: #f7fbff;
+	--surface-strong: #ffffff;
+	--ink: #173047;
+	--ink-soft: #5d7488;
+	--line: #d9e6f2;
+	--accent: #2a5bd7;
+	--accent-2: #1f4bb8;
+	--good: #19b36b;
+	--warn: #e3a229;
+	--bad: #e05c66;
+	--shadow: 0 18px 44px rgba(27, 70, 103, 0.15);
+	--radius-xl: 24px;
+	--radius-lg: 18px;
+	--radius-md: 12px;
+	--radius-sm: 10px;
+}
+
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+html {
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	min-height: 100vh;
+	font-family: "Manrope", sans-serif;
+	color: var(--ink);
+	background:
+		radial-gradient(circle at 13% 7%, rgba(255, 255, 255, 0.66), transparent 40%),
+		radial-gradient(circle at 88% 87%, rgba(18, 178, 197, 0.16), transparent 40%),
+		linear-gradient(135deg, var(--bg-1), var(--bg-2));
+}
+
+button,
+input,
+textarea,
+select {
+	font: inherit;
+}
+
+img,
+svg {
+	display: block;
+	max-width: 100%;
+}
+
+.positive { color: var(--good); }
+.neutral { color: var(--warn); }
+.negative { color: var(--bad); }
+
+@keyframes page-in {
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes pulse {
+	70% {
+		box-shadow: 0 0 0 11px rgba(42, 91, 215, 0);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(42, 91, 215, 0);
+	}
+}
