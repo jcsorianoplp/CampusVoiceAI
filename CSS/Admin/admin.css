@@ -678,6 +678,8 @@ a.admin-nav-item {
 	max-height: calc(100vh - 300px);
 	overflow: auto;
 	padding-right: 4px;
+	align-content: start;
+	grid-auto-rows: max-content;
 }
 
 .admin-inbox-board.is-list {
@@ -722,7 +724,7 @@ a.admin-nav-item {
 }
 
 .admin-suggestion-sentiment--neutral {
-	color: #71879a;
+	color: #c47a10;
 }
 
 .admin-suggestion-sentiment--positive {
@@ -730,7 +732,7 @@ a.admin-nav-item {
 }
 
 .admin-suggestion-sentiment--negative {
-	color: #d06a4f;
+	color: #d64545;
 }
 
 .admin-suggestion-card p {

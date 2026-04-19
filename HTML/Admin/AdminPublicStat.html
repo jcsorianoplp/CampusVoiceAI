@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Campus Voice AI | Public Stats</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+	<link rel="stylesheet" href="../../CSS/Admin/publicStats.css" />
+</head>
+<body class="admin-dashboard-page">
+	<main class="admin-dashboard-shell">
+		<aside class="admin-sidebar">
+			<div class="admin-brand">
+				<div class="admin-brand-mark" aria-hidden="true">
+					<svg viewBox="0 0 24 24">
+						<path d="M6.5 16.2c-1.2-1.2-1.9-2.8-1.9-4.5 0-4.1 3.5-7.5 7.8-7.5s7.8 3.4 7.8 7.5-3.5 7.5-7.8 7.5c-.8 0-1.6-.1-2.3-.3L6 20.1l.5-3.9Z" />
+					</svg>
+				</div>
+				<div>
+					<div class="admin-brand-name">Campus Voice</div>
+					<div class="admin-brand-sub">Organization Control Center</div>
+				</div>
+			</div>
+
+			<nav class="admin-nav" aria-label="Admin navigation">
+				<a class="admin-nav-item" href="./AdminDashboard.html">Dashboard</a>
+				<a class="admin-nav-item" href="./AdminSuggestion.html">Suggestions</a>
+				<a class="admin-nav-item is-active" href="./AdminPublicStat.html">Public Stats</a>
+				<button class="admin-nav-item" type="button" disabled>AI Categories</button>
+				<button class="admin-nav-item" type="button" disabled>Reports</button>
+			</nav>
+
+			<div class="admin-sidebar-card">
+				<div class="admin-sidebar-card-label">Active Organization</div>
+				<div class="admin-sidebar-card-value">Computer Society</div>
+				<div class="admin-sidebar-card-note">Campus Voice AI</div>
+			</div>
+		</aside>
+
+		<section class="admin-main">
+			<header class="admin-topbar">
+				<div>
+					<div class="admin-kicker">Private Admin Dashboard</div>
+					<h1 class="admin-title">Public Stats</h1>
+				</div>
+				<div class="admin-topbar-actions">
+					<button class="admin-icon-btn" type="button" aria-label="Notifications">🔔</button>
+					<button class="admin-icon-btn" type="button" aria-label="Profile">👤</button>
+				</div>
+			</header>
+
+			<section class="admin-panel is-active" data-admin-panel="public-stats">
+				<section class="admin-public-toolbar">
+					<div class="admin-public-toolbar-copy">
+						<div class="admin-panel-label">Public Transparency Panel</div>
+						<h2>Manage what students can see</h2>
+						<p>Choose the reporting period, review trends, and publish a clean public update without exposing raw private feedback.</p>
+					</div>
+					<div class="admin-public-toolbar-actions">
+						<div class="admin-range-toggle" role="group" aria-label="Statistics period">
+							<button class="range-btn is-active" type="button" data-range="7">7D</button>
+							<button class="range-btn" type="button" data-range="30">30D</button>
+						</div>
+						<button class="admin-secondary-btn" id="refreshPublicStats" type="button">Refresh</button>
+						<button class="admin-primary-btn" id="publishPublicStats" type="button">Publish Update</button>
+					</div>
+				</section>
+
+				<section class="admin-stats-grid admin-stats-grid--public">
+					<article class="admin-stat-card">
+						<div class="admin-stat-label">Total Public Submissions</div>
+						<div class="admin-stat-value" id="publicTotalValue">124</div>
+						<div class="admin-stat-note">Visible in current period</div>
+					</article>
+					<article class="admin-stat-card">
+						<div class="admin-stat-label">Resolution Rate</div>
+						<div class="admin-stat-value" id="publicResolutionValue">67%</div>
+						<div class="admin-stat-note">Shareable progress marker</div>
+					</article>
+					<article class="admin-stat-card">
+						<div class="admin-stat-label">Avg. Response Time</div>
+						<div class="admin-stat-value" id="publicResponseTimeValue">2.4d</div>
+						<div class="admin-stat-note">Median first admin action</div>
+					</article>
+					<article class="admin-stat-card">
+						<div class="admin-stat-label">Top Concern</div>
+						<div class="admin-stat-value" id="publicTopCategoryValue">Facilities</div>
+						<div class="admin-stat-note">Most submitted category</div>
+					</article>
+				</section>
+
+				<section class="admin-public-grid">
+					<article class="admin-card" id="publicTrendCard">
+						<div class="admin-panel-label">Trend Overview</div>
+						<h3>Submissions and resolutions</h3>
+						<div class="admin-trend-chart" id="publicTrendChart" aria-label="Submission trend chart">
+							<div class="trend-bar" data-trend-index="0"><span></span></div>
+							<div class="trend-bar" data-trend-index="1"><span></span></div>
+							<div class="trend-bar" data-trend-index="2"><span></span></div>
+							<div class="trend-bar" data-trend-index="3"><span></span></div>
+							<div class="trend-bar" data-trend-index="4"><span></span></div>
+							<div class="trend-bar" data-trend-index="5"><span></span></div>
+							<div class="trend-bar" data-trend-index="6"><span></span></div>
+						</div>
+						<div class="admin-trend-legend">
+							<span><i class="bi bi-square-fill"></i> Submissions</span>
+							<span><i class="bi bi-square-fill"></i> Resolved</span>
+						</div>
+					</article>
+
+					<article class="admin-card" id="publicCategoryCard">
+						<div class="admin-panel-label">Category Breakdown</div>
+						<h3>Top concerns this period</h3>
+						<ul class="admin-category-breakdown" id="publicCategoryBreakdown">
+							<li><span>Campus Facilities</span><strong>32%</strong></li>
+							<li><span>Student Life</span><strong>21%</strong></li>
+							<li><span>Academic Services</span><strong>18%</strong></li>
+							<li><span>Admin Process</span><strong>16%</strong></li>
+							<li><span>Campus Safety</span><strong>13%</strong></li>
+						</ul>
+					</article>
+
+					<article class="admin-card" id="publicActivityCard">
+						<div class="admin-panel-label">Recent Public Activity</div>
+						<h3>Latest visible updates</h3>
+						<div class="admin-feed admin-feed--public">
+							<article class="admin-feed-item">
+								<div class="admin-feed-top"><span>Today</span><span>#Campus Facilities</span></div>
+								<p>Library airflow concern moved to In Progress and posted in public status.</p>
+								<div class="admin-feed-bottom"><span class="status-pill status-pill--progress">In Progress</span><span>Public</span></div>
+							</article>
+							<article class="admin-feed-item">
+								<div class="admin-feed-top"><span>Yesterday</span><span>#Student Life</span></div>
+								<p>Activity-week suggestion acknowledged and published in summary update.</p>
+								<div class="admin-feed-bottom"><span class="status-pill status-pill--open">Acknowledged</span><span>Public</span></div>
+							</article>
+							<article class="admin-feed-item">
+								<div class="admin-feed-top"><span>2 days ago</span><span>#Classroom</span></div>
+								<p>Projector issue marked resolved and reflected on the public dashboard.</p>
+								<div class="admin-feed-bottom"><span class="status-pill status-pill--done">Resolved</span><span>Public</span></div>
+							</article>
+						</div>
+					</article>
+
+					<article class="admin-card" id="publicControlCard">
+						<div class="admin-panel-label">Publish Controls</div>
+						<h3>Public page settings</h3>
+						<div class="admin-public-controls">
+							<label><input type="checkbox" data-widget-toggle="#publicTrendCard" checked /> Show Trend Overview</label>
+							<label><input type="checkbox" data-widget-toggle="#publicCategoryCard" checked /> Show Category Breakdown</label>
+							<label><input type="checkbox" data-widget-toggle="#publicActivityCard" checked /> Show Recent Activity</label>
+						</div>
+						<label class="admin-public-note" for="publicSummaryNote">Public note from admin</label>
+						<textarea id="publicSummaryNote" maxlength="180" placeholder="Example: We are prioritizing classroom facilities and will post weekly updates."></textarea>
+						<div class="admin-public-footer">
+							<span id="publicNoteCount">0/180</span>
+							<span id="publicLastUpdated">Last updated: Not yet published</span>
+						</div>
+					</article>
+				</section>
+			</section>
+		</section>
+	</main>
+
+	<script src="../../JS/Admin/adminPublicStat.js"></script>
+</body>
+</html>

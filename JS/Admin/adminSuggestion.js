@@ -2,24 +2,32 @@ function normalize(value) {
 	return String(value || "").trim().toLowerCase();
 }
 
+let suggestionPageInitialized = false;
+
 function initAdminSuggestionPage() {
+	if (suggestionPageInitialized) {
+		return true;
+	}
+
 	const suggestionSearch = document.getElementById("suggestionSearch");
 	const categoryFilter = document.getElementById("categoryFilter");
 	const statusFilter = document.getElementById("statusFilter");
+	const sentimentFilter = document.getElementById("sentimentFilter");
 	const suggestionBoard = document.getElementById("suggestionBoard");
 	const suggestionEmptyState = document.getElementById("suggestionEmptyState");
 	const viewToggleButtons = Array.from(document.querySelectorAll("[data-view-mode]"));
 
 	if (!suggestionBoard) {
-		return;
+		return false;
 	}
 
-	const cards = Array.from(suggestionBoard.querySelectorAll("[data-category][data-status]"));
+	const cards = Array.from(suggestionBoard.querySelectorAll("[data-category][data-status][data-sentiment]"));
 
 	function updateSuggestionBoardVisibility() {
 		const searchValue = normalize(suggestionSearch ? suggestionSearch.value : "");
 		const categoryValue = normalize(categoryFilter ? categoryFilter.value : "all");
 		const statusValue = normalize(statusFilter ? statusFilter.value : "all");
+		const sentimentValue = normalize(sentimentFilter ? sentimentFilter.value : "all");
 		let visibleCount = 0;
 
 		cards.forEach((card) => {
@@ -27,13 +35,16 @@ function initAdminSuggestionPage() {
 			const fullText = normalize(card.textContent || "");
 			const cardCategory = normalize(card.dataset.category);
 			const cardStatus = normalize(card.dataset.status);
+			const cardSentiment = normalize(card.dataset.sentiment);
 
 			const matchesSearch = !searchValue || cardText.includes(searchValue) || fullText.includes(searchValue);
 			const matchesCategory = categoryValue === "all" || cardCategory === categoryValue;
 			const matchesStatus = statusValue === "all" || cardStatus === statusValue;
-			const isVisible = matchesSearch && matchesCategory && matchesStatus;
+			const matchesSentiment = sentimentValue === "all" || cardSentiment === sentimentValue;
+			const isVisible = matchesSearch && matchesCategory && matchesStatus && matchesSentiment;
 
 			card.hidden = !isVisible;
+			card.style.display = isVisible ? "" : "none";
 			if (isVisible) {
 				visibleCount += 1;
 			}
@@ -41,6 +52,7 @@ function initAdminSuggestionPage() {
 
 		if (suggestionEmptyState) {
 			suggestionEmptyState.hidden = visibleCount !== 0;
+			suggestionEmptyState.style.display = visibleCount === 0 ? "" : "none";
 		}
 	}
 
@@ -68,6 +80,10 @@ function initAdminSuggestionPage() {
 		statusFilter.addEventListener("change", updateSuggestionBoardVisibility);
 	}
 
+	if (sentimentFilter) {
+		sentimentFilter.addEventListener("change", updateSuggestionBoardVisibility);
+	}
+
 	viewToggleButtons.forEach((button) => {
 		button.addEventListener("click", () => {
 			setSuggestionViewMode(button.dataset.viewMode);
@@ -76,10 +92,26 @@ function initAdminSuggestionPage() {
 
 	setSuggestionViewMode("list");
 	updateSuggestionBoardVisibility();
+	suggestionPageInitialized = true;
+	return true;
 }
 
-if (document.readyState === "loading") {
-	document.addEventListener("DOMContentLoaded", initAdminSuggestionPage);
-} else {
-	initAdminSuggestionPage();
+const initializedImmediately = initAdminSuggestionPage();
+
+if (!initializedImmediately) {
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", initAdminSuggestionPage, { once: true });
+	}
+
+	window.addEventListener("load", initAdminSuggestionPage, { once: true });
+
+	const initRetryTimer = window.setInterval(() => {
+		if (initAdminSuggestionPage()) {
+			window.clearInterval(initRetryTimer);
+		}
+	}, 250);
+
+	window.setTimeout(() => {
+		window.clearInterval(initRetryTimer);
+	}, 5000);
 }

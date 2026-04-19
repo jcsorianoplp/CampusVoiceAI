@@ -28,7 +28,7 @@
 			<nav class="admin-nav" aria-label="Admin navigation">
 				<a class="admin-nav-item" href="./AdminDashboard.html">Dashboard</a>
 				<a class="admin-nav-item is-active" href="./AdminSuggestion.html">Suggestions</a>
-				<button class="admin-nav-item" type="button" disabled>Public Stats</button>
+				<a class="admin-nav-item" href="./AdminPublicStat.html">Public Stats</a>
 				<button class="admin-nav-item" type="button" disabled>AI Categories</button>
 				<button class="admin-nav-item" type="button" disabled>Reports</button>
 			</nav>
@@ -87,6 +87,12 @@
 							<option value="progress">In Progress</option>
 							<option value="resolved">Resolved</option>
 						</select>
+						<select class="admin-filter" id="sentimentFilter" aria-label="Filter by sentiment">
+							<option value="all">All Sentiments</option>
+							<option value="neutral">Neutral</option>
+							<option value="positive">Positive</option>
+							<option value="negative">Negative</option>
+						</select>
 						<div class="admin-view-toggle" role="group" aria-label="View mode">
 							<button class="view-toggle-btn is-active" type="button" data-view-mode="list" aria-label="List view" title="List view">
 								<i class="bi bi-list-ul" aria-hidden="true"></i>
@@ -99,7 +105,7 @@
 				</section>
 
 				<section class="admin-inbox-board is-list" id="suggestionBoard" aria-label="Suggestion inbox">
-					<article class="admin-suggestion-card" data-category="Campus Facilities" data-status="open" data-text="library air conditioning weak afternoon">
+					<article class="admin-suggestion-card" data-category="Campus Facilities" data-status="open" data-sentiment="neutral" data-text="library air conditioning weak afternoon">
 						<div class="admin-suggestion-top">
 							<span>2 min ago</span>
 							<span class="admin-suggestion-category">#Campus Facilities</span>
@@ -111,7 +117,7 @@
 						</div>
 					</article>
 
-					<article class="admin-suggestion-card" data-category="Student Life" data-status="progress" data-text="more student org activities midterms finals week">
+					<article class="admin-suggestion-card" data-category="Student Life" data-status="progress" data-sentiment="positive" data-text="more student org activities midterms finals week">
 						<div class="admin-suggestion-top">
 							<span>15 min ago</span>
 							<span class="admin-suggestion-category">#Student Life</span>
@@ -123,7 +129,7 @@
 						</div>
 					</article>
 
-					<article class="admin-suggestion-card" data-category="Admin Process" data-status="resolved" data-text="enrollment steps confusing clear checklist freshmen">
+					<article class="admin-suggestion-card" data-category="Admin Process" data-status="resolved" data-sentiment="neutral" data-text="enrollment steps confusing clear checklist freshmen">
 						<div class="admin-suggestion-top">
 							<span>1 hour ago</span>
 							<span class="admin-suggestion-category">#Admin Process</span>
@@ -135,7 +141,7 @@
 						</div>
 					</article>
 
-					<article class="admin-suggestion-card" data-category="Campus Safety" data-status="open" data-text="main gate overcrowded after last class crowd flow">
+					<article class="admin-suggestion-card" data-category="Campus Safety" data-status="open" data-sentiment="negative" data-text="main gate overcrowded after last class crowd flow">
 						<div class="admin-suggestion-top">
 							<span>3 hours ago</span>
 							<span class="admin-suggestion-category">#Campus Safety</span>
@@ -147,7 +153,7 @@
 						</div>
 					</article>
 
-					<article class="admin-suggestion-card" data-category="Academic Services" data-status="progress" data-text="grading feedback release faster">
+					<article class="admin-suggestion-card" data-category="Academic Services" data-status="progress" data-sentiment="neutral" data-text="grading feedback release faster">
 						<div class="admin-suggestion-top">
 							<span>5 hours ago</span>
 							<span class="admin-suggestion-category">#Academic Services</span>
@@ -159,7 +165,7 @@
 						</div>
 					</article>
 
-					<article class="admin-suggestion-card" data-category="Classroom" data-status="resolved" data-text="projector classroom better lighting">
+					<article class="admin-suggestion-card" data-category="Classroom" data-status="resolved" data-sentiment="positive" data-text="projector classroom better lighting">
 						<div class="admin-suggestion-top">
 							<span>Yesterday</span>
 							<span class="admin-suggestion-category">#Classroom</span>
