@@ -43,14 +43,47 @@
 						</div>
 						<div class="char-count"><span id="charCount">0</span>/500</div>
 					</div>
+
+					<div class="field-grid">
+						<label class="field-block" for="impactLevel">
+							<span class="field-label">Impact Level</span>
+							<select id="impactLevel" name="impactLevel">
+								<option value="medium" selected>Medium</option>
+								<option value="low">Low</option>
+								<option value="high">High</option>
+								<option value="urgent">Urgent</option>
+							</select>
+						</label>
+
+						<label class="field-block" for="locationTag">
+							<span class="field-label">Location</span>
+							<select id="locationTag" name="locationTag">
+								<option value="">General / Not specific</option>
+								<option value="Library">Library</option>
+								<option value="Classroom">Classroom</option>
+								<option value="Laboratory">Laboratory</option>
+								<option value="Canteen">Canteen</option>
+								<option value="Hallway">Hallway</option>
+								<option value="Office">Office</option>
+								<option value="Online Service">Online Service</option>
+							</select>
+						</label>
+					</div>
+
+					<label class="field-block field-block--full" for="suggestedSolution">
+						<span class="field-label">Suggested Solution (Optional)</span>
+						<textarea id="suggestedSolution" name="suggestedSolution" maxlength="280" placeholder="What would be a practical fix?"></textarea>
+					</label>
+
 					<button class="send-btn" id="sendButton" type="submit">Send a Suggestion</button>
+					<p class="submit-feedback" id="submitFeedback" aria-live="polite"></p>
 
 					<div class="category-block">
 						<div class="category-title">System Categories</div>
 						<div class="chip-grid">
 							<span class="chip">Classroom</span>
 							<span class="chip">Campus Facilities</span>
-							<span class="chip">Academic Services</span>
+							<span class="chip">Services</span>
 							<span class="chip">Campus Safety</span>
 							<span class="chip">Admin Process</span>
 						</div>
@@ -88,50 +121,26 @@
 					<div class="stats-grid">
 						<article class="status-card">
 							<div class="status-label">Community Impact</div>
-							<div class="status-value">50</div>
+							<div class="status-value" id="publicTotalValue">50</div>
 							<div class="status-sub">Total of Voices heard</div>
 						</article>
 
 						<article class="status-card">
 							<div class="status-label">Top Category</div>
-							<div class="status-value">Events</div>
+							<div class="status-value" id="publicTopCategoryValue">Events</div>
 							<div class="status-sub">45% of Total</div>
 						</article>
 
 						<article class="status-card">
 							<div class="status-label">Resolution Rate</div>
-							<div class="status-value">67%</div>
+							<div class="status-value" id="publicResolutionValue">67%</div>
 							<div class="status-sub">Current Target: 80%</div>
 						</article>
 					</div>
 
 					<div class="chart-card">
 						<div class="chart-title">Top Concerns (AI Categorized)</div>
-						<div class="bar-chart" aria-hidden="true">
-							<div class="bar-group">
-								<div class="bar bar--events"></div>
-								<span>Events</span>
-							</div>
-							<div class="bar-group">
-								<div class="bar bar--classroom"></div>
-								<span>Classroom</span>
-							</div>
-							<div class="bar-group">
-								<div class="bar bar--facilities"></div>
-								<span>Facilities</span>
-							</div>
-							<div class="bar-group">
-								<div class="bar bar--safety"></div>
-								<span>Safety</span>
-							</div>
-							<div class="bar-group">
-								<div class="bar bar--academic"></div>
-								<span>Academic</span>
-							</div>
-							<div class="bar-group">
-								<div class="bar bar--admin"></div>
-								<span>Admin</span>
-							</div>
+						<div class="bar-chart" id="publicTrendChart" aria-hidden="true">
 						</div>
 					</div>
 
@@ -152,72 +161,7 @@
 					<div class="activity-card">
 						<div class="chart-title">Recent Activity</div>
 						<div class="activity-table-wrap">
-							<table class="activity-table">
-								<thead>
-									<tr>
-										<th>Time</th>
-										<th>Activity Description</th>
-										<th>AI Category</th>
-										<th>Status</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr>
-										<td>2 min</td>
-										<td>"A student submitted feedback regarding classroom equipment"</td>
-										<td>#Classroom</td>
-										<td>Processed</td>
-									</tr>
-									<tr>
-										<td>2 min</td>
-										<td>"A student submitted feedback regarding classroom equipment"</td>
-										<td>#Classroom</td>
-										<td>Processed</td>
-									</tr>
-									<tr>
-										<td>2 min</td>
-										<td>"A student submitted feedback regarding classroom equipment"</td>
-										<td>#Classroom</td>
-										<td>Processed</td>
-									</tr>
-									<tr>
-										<td>2 min</td>
-										<td>"A student submitted feedback regarding classroom equipment"</td>
-										<td>#Classroom</td>
-										<td>Processed</td>
-									</tr>
-									<tr>
-										<td>2 min</td>
-										<td>"A student submitted feedback regarding classroom equipment"</td>
-										<td>#Classroom</td>
-										<td>Processed</td>
-									</tr>
-									<tr>
-										<td>2 min</td>
-										<td>"A student submitted feedback regarding classroom equipment"</td>
-										<td>#Classroom</td>
-										<td>Processed</td>
-									</tr>
-									<tr>
-										<td>2 min</td>
-										<td>"A student submitted feedback regarding classroom equipment"</td>
-										<td>#Classroom</td>
-										<td>Processed</td>
-									</tr>
-									<tr>
-										<td>2 min</td>
-										<td>"A student submitted feedback regarding classroom equipment"</td>
-										<td>#Classroom</td>
-										<td>Processed</td>
-									</tr>
-									<tr>
-										<td>2 min</td>
-										<td>"A student submitted feedback regarding classroom equipment"</td>
-										<td>#Classroom</td>
-										<td>Processed</td>
-									</tr>
-								</tbody>
-							</table>
+								<div class="admin-feed admin-feed--public" id="publicActivityFeed"></div>
 						</div>
 					</div>
 				</section>
@@ -230,6 +174,7 @@
 		</nav>
 	</main>
 
+	<script src="../../JS/Admin/adminState.js"></script>
 	<script src="../../JS/User/suggestionForm.js"></script>
 </body>
 </html>

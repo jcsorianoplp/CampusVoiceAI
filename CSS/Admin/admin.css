@@ -1485,6 +1485,37 @@ a.admin-nav-item {
 	font-weight: 600;
 }
 
+.admin-snapshot-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.admin-meta-chip {
+	padding: 4px 8px;
+	border-radius: 999px;
+	background: #eef6fb;
+	border: 1px solid #d2e4ef;
+	font-size: 0.66rem;
+	font-weight: 800;
+	letter-spacing: 0.03em;
+	color: #3b657f;
+}
+
+.admin-snapshot-solution {
+	font-size: 0.76rem;
+	line-height: 1.4;
+	color: #2f5973;
+	background: #f4fbff;
+	border: 1px solid #d4e7f2;
+	border-radius: 10px;
+	padding: 6px 8px;
+}
+
+.admin-snapshot-solution strong {
+	color: #244a63;
+}
+
 .admin-preview-link {
 	font-family: "Space Grotesk", sans-serif;
 	font-size: 1.12rem;

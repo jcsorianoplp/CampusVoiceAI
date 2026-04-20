@@ -135,19 +135,33 @@ function renderOverviewSnapshot(state) {
 
 	const recentRecords = state.suggestions.slice(0, 3);
 	overviewSnapshotList.innerHTML = recentRecords
-		.map((record) => `
+		.map((record) => {
+			const sentiment = record.sentiment || "Neutral";
+			const impact = record.impactLevel ? `${record.impactLevel}`.replace(/^./, (letter) => letter.toUpperCase()) : "Medium";
+			const location = record.location || "General";
+			const trackingId = record.trackingId || "Not assigned";
+			const suggestedSolution = String(record.suggestedSolution || "").trim();
+
+			return `
 			<article class="admin-snapshot-item">
 				<div class="admin-snapshot-top">
 					<span>${record.time}</span>
 					<span class="admin-suggestion-category">#${record.category}</span>
 				</div>
 				<p>${record.text}</p>
+				<div class="admin-snapshot-meta">
+					<span class="admin-meta-chip">Impact: ${impact}</span>
+					<span class="admin-meta-chip">Location: ${location}</span>
+					<span class="admin-meta-chip">ID: ${trackingId}</span>
+				</div>
+				${suggestedSolution ? `<div class="admin-snapshot-solution"><strong>Suggested fix:</strong> ${suggestedSolution}</div>` : ""}
 				<div class="admin-snapshot-bottom">
 					<span class="status-pill status-pill--${record.status}">${record.statusLabel}</span>
-					<span class="admin-suggestion-sentiment admin-suggestion-sentiment--${record.sentiment.toLowerCase()}">${record.sentiment}</span>
+					<span class="admin-suggestion-sentiment admin-suggestion-sentiment--${sentiment.toLowerCase()}">${sentiment}</span>
 				</div>
 			</article>
-		`)
+		`;
+		})
 		.join("");
 }
 

@@ -1,6 +1,7 @@
 @import url("./global.css");
 
 body.suggestion-wireframe-page {
+	min-height: 100vh;
 	padding: 16px;
 	background:
 		radial-gradient(circle at 11% 8%, rgba(255, 255, 255, 0.9), transparent 29%),
@@ -8,27 +9,82 @@ body.suggestion-wireframe-page {
 		linear-gradient(135deg, #f8fbfd 0%, #d9edf5 42%, #59bed9 100%);
 	display: grid;
 	justify-items: center;
-	align-content: start;
+	align-content: center;
 	overflow-x: hidden;
 }
 
 .suggestion-wireframe {
-	width: min(920px, calc(100vw - 24px));
-	min-height: calc(100vh - 88px);
-	padding-bottom: 88px;
+	width: min(1240px, calc(100vw - 32px));
+	min-height: calc(100vh - 44px);
+	padding: 16px 0;
 	display: grid;
+	grid-template-columns: minmax(0, 1fr) 180px;
+	grid-template-rows: minmax(0, 1fr);
 	align-content: center;
-	justify-items: center;
-	gap: 22px;
+	align-items: center;
+	justify-items: stretch;
+	gap: 54px;
 	animation: page-in 550ms ease forwards;
 }
 
 .tab-panel {
 	width: 100%;
+	grid-row: 1;
+	grid-column: 1;
+	opacity: 0;
+	transform: translateX(0);
+	transition: opacity 420ms ease, transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+	will-change: opacity, transform;
 }
 
 .tab-panel[hidden] {
 	display: none;
+}
+
+.tab-panel.is-visible {
+	opacity: 1;
+	transform: translateX(0);
+}
+
+.tab-panel.is-entering-from-right {
+	opacity: 0;
+	transform: translateX(12%);
+}
+
+.tab-panel.is-entering-from-left {
+	opacity: 0;
+	transform: translateX(-12%);
+}
+
+.tab-panel.is-leaving-to-left {
+	opacity: 0;
+	transform: translateX(-12%);
+	pointer-events: none;
+}
+
+.tab-panel.is-leaving-to-right {
+	opacity: 0;
+	transform: translateX(12%);
+	pointer-events: none;
+}
+
+
+.wireframe-tabs {
+	grid-row: 1;
+	grid-column: 2;
+	position: static;
+	justify-self: end;
+	align-self: center;
+	transform: none;
+	z-index: 20;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	justify-content: center;
+	gap: 22px;
+	padding: 0;
+	width: 180px;
+	pointer-events: auto;
 }
 
 .wireframe-card {
@@ -45,11 +101,13 @@ body.suggestion-wireframe-page {
 }
 
 .wireframe-card--suggestion {
-	min-height: 560px;
+	min-height: 720px;
 }
 
 .wireframe-card--public {
 	min-height: 720px;
+	grid-template-columns: 265px minmax(0, 1fr);
+	align-items: start;
 }
 
 .wireframe-left {
@@ -86,7 +144,7 @@ body.suggestion-wireframe-page {
 }
 
 .wireframe-brand-text {
-	font-size: 2.18rem;
+	font-size: 2.32rem;
 	line-height: 0.95;
 	font-weight: 400;
 	letter-spacing: -0.05em;
@@ -97,7 +155,7 @@ body.suggestion-wireframe-page {
 	display: grid;
 	gap: 2px;
 	font-family: "Manrope", sans-serif;
-	font-size: 2.38rem;
+	font-size: 2.52rem;
 	line-height: 1.04;
 	font-weight: 800;
 	letter-spacing: -0.04em;
@@ -121,9 +179,9 @@ body.suggestion-wireframe-page {
 
 .wireframe-copy {
 	max-width: 24ch;
-	font-size: 0.78rem;
-	line-height: 1.75;
-	letter-spacing: 0.14em;
+	font-size: 0.88rem;
+	line-height: 1.68;
+	letter-spacing: 0.08em;
 	text-transform: none;
 	color: #111;
 	opacity: 0.82;
@@ -156,14 +214,63 @@ body.suggestion-wireframe-page {
 	grid-template-rows: auto auto auto auto auto;
 }
 
+.field-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+}
+
+.field-block {
+	display: grid;
+	gap: 6px;
+}
+
+.field-block--full {
+	grid-column: 1 / -1;
+}
+
+.field-label {
+	font-size: 0.74rem;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	color: #4c8eac;
+}
+
+.field-block select,
+.field-block textarea {
+	width: 100%;
+	border-radius: 11px;
+	border: 1px solid #89c5e0;
+	background: #fffdfa;
+	padding: 10px 11px;
+	font-size: 0.84rem;
+	line-height: 1.45;
+	color: #4c4c4c;
+	font-family: "Manrope", sans-serif;
+}
+
+.field-block--full textarea {
+	min-height: 72px;
+	resize: vertical;
+}
+
+.submit-feedback {
+	margin: -4px 0 0;
+	min-height: 1.15em;
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	color: #2d6ed8;
+}
+
 .wireframe-panel--form textarea {
 	min-height: 204px;
 	border-radius: 13px;
 	border: 1px solid #89c5e0;
 	background: #fffdfa;
 	padding: 13px 13px 14px;
-	font-size: 0.82rem;
-	line-height: 1.5;
+	font-size: 0.9rem;
+	line-height: 1.55;
 	color: #4c4c4c;
 	box-shadow: none;
 }
@@ -213,10 +320,10 @@ body.suggestion-wireframe-page {
 
 .send-btn {
 	justify-self: center;
-	min-width: 392px;
-	height: 48px;
+	min-width: 414px;
+	height: 50px;
 	border-radius: 12px;
-	font-size: 0.95rem;
+	font-size: 1rem;
 	box-shadow: none;
 	border: none;
 	padding: 14px 16px;
@@ -265,6 +372,9 @@ body.suggestion-wireframe-page {
 .wireframe-panel--stats {
 	gap: 12px;
 	padding-top: 14px;
+	width: 100%;
+	justify-self: stretch;
+	overflow: hidden;
 }
 
 .stats-grid {
@@ -411,11 +521,9 @@ body.suggestion-wireframe-page {
 .activity-table-wrap {
 	border: 1px solid #97d0e3;
 	border-radius: 10px;
-	max-height: 150px;
-	overflow-y: auto;
-	overflow-x: hidden;
+	max-height: 240px;
+	overflow: hidden;
 	background: #fff;
-	scrollbar-gutter: stable;
 }
 
 .activity-table {
@@ -445,24 +553,112 @@ body.suggestion-wireframe-page {
 	border-bottom: none;
 }
 
-.wireframe-tabs {
-	position: fixed;
-	left: 50%;
-	bottom: 18px;
-	transform: translateX(-50%);
-	z-index: 20;
+.admin-feed--public {
+	display: grid;
+	gap: 8px;
+	max-height: 226px;
+	overflow-y: auto;
+	overflow-x: hidden;
+	padding-right: 4px;
+	scrollbar-gutter: stable;
+}
+
+.admin-feed--public::-webkit-scrollbar {
+	width: 10px;
+}
+
+.admin-feed--public::-webkit-scrollbar-track {
+	background: #e8f4fa;
+	border-radius: 999px;
+}
+
+.admin-feed--public::-webkit-scrollbar-thumb {
+	background: linear-gradient(180deg, #8ebad0, #6fa3bd);
+	border-radius: 999px;
+	border: 2px solid #e8f4fa;
+}
+
+.admin-feed--public::-webkit-scrollbar-thumb:hover {
+	background: linear-gradient(180deg, #7dacC5, #5f95b0);
+}
+
+.public-feed-item {
+	display: grid;
+	gap: 5px;
+	padding: 10px 11px;
+	border-radius: 11px;
+	border: 1px solid #9dd3e5;
+	background: linear-gradient(180deg, #ffffff, #f3fbff);
+	box-shadow: 0 8px 16px rgba(58, 118, 146, 0.08);
+}
+
+.public-feed-top,
+.public-feed-bottom {
 	display: flex;
-	justify-content: center;
-	gap: 56px;
-	align-items: flex-end;
-	padding-bottom: 0;
-	pointer-events: auto;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+	font-size: 0.62rem;
+	font-weight: 700;
+	color: #5c8ea4;
+}
+
+.public-feed-item p {
+	font-size: 0.7rem;
+	line-height: 1.45;
+	color: #31596d;
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+.public-feed-top span,
+.public-feed-bottom span {
+	overflow-wrap: anywhere;
+}
+
+.public-feed-empty {
+	font-size: 0.7rem;
+	font-weight: 700;
+	color: #5c8ea4;
+	padding: 8px 2px;
+}
+
+.public-bar-group {
+	display: grid;
+	justify-items: center;
+	align-content: end;
+	gap: 4px;
+	height: 100%;
+	font-size: 0.6rem;
+	font-weight: 700;
+	color: #7f8b93;
+}
+
+.public-bar {
+	width: 100%;
+	border-radius: 6px 6px 3px 3px;
+	min-height: 12px;
+	transition: height 280ms ease, transform 280ms ease;
+}
+
+.public-bar:hover {
+	transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.tab-panel {
+		transition: none;
+	}
 }
 
 .wireframe-tab {
 	border: none;
 	background: transparent;
 	padding: 0;
+	display: block;
+	width: max-content;
+	margin-left: auto;
+	text-align: right;
 	font-family: "Manrope", sans-serif;
 	font-size: 1.68rem;
 	font-weight: 800;
@@ -500,14 +696,21 @@ body.suggestion-wireframe-page {
 @media (max-width: 860px) {
 	body.suggestion-wireframe-page {
 		padding: 16px;
+		align-content: start;
 	}
 
 	.suggestion-wireframe {
 		width: min(760px, 100%);
-		padding-bottom: 110px;
+		grid-template-columns: 1fr;
+		grid-template-rows: minmax(0, 1fr) auto;
+		padding: 16px 0 110px;
 	}
 
 	.wireframe-card {
+		grid-template-columns: 1fr;
+	}
+
+	.wireframe-card--public {
 		grid-template-columns: 1fr;
 	}
 
@@ -529,10 +732,27 @@ body.suggestion-wireframe-page {
 		min-width: min(100%, 328px);
 	}
 
+	.field-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.wireframe-panel--stats {
+		width: 100%;
+		justify-self: stretch;
+	}
+
 	.wireframe-tabs {
-		gap: 28px;
-		flex-wrap: wrap;
+		grid-column: 1;
+		grid-row: 2;
+		justify-self: center;
+		align-self: end;
+		top: auto;
 		bottom: 14px;
+		transform: none;
+		flex-direction: row;
+		gap: 28px;
+		align-items: flex-end;
+		width: auto;
 	}
 
 	.wireframe-tab {
@@ -544,7 +764,7 @@ body.suggestion-wireframe-page {
 	.suggestion-wireframe {
 		width: 100%;
 		gap: 20px;
-		padding-bottom: 100px;
+		padding: 12px 0 100px;
 	}
 
 	.wireframe-card {
