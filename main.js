@@ -16,7 +16,7 @@ function createMainWindow() {
 		}
 	});
 
-	window.loadFile(path.join(__dirname, "HTML", "Admin", "AdminDashboard.html"));
+	window.loadFile(path.join(__dirname, "HTML", "Admin", "Login.html"));
 }
 
 app.whenReady().then(() => {

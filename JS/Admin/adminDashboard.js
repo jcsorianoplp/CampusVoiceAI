@@ -2,6 +2,7 @@ const generatedSlug = document.getElementById("generatedSlug");
 const previewSlug = document.getElementById("previewSlug");
 const previewSlugMirror = document.getElementById("previewSlugMirror");
 const regenerateLinkButton = document.getElementById("regenerateLink");
+const openGeneratedLinkButton = document.getElementById("openGeneratedLink");
 const copyGeneratedLinkButton = document.getElementById("copyGeneratedLink");
 const linkFeedback = document.getElementById("linkFeedback");
 const publicPreviewCard = document.getElementById("publicPreviewCard");
@@ -12,6 +13,7 @@ const dashboardTotalSuggestions = document.getElementById("dashboardTotalSuggest
 const dashboardTopCategory = document.getElementById("dashboardTopCategory");
 const dashboardResponseRate = document.getElementById("dashboardResponseRate");
 const dashboardAiAccuracy = document.getElementById("dashboardAiAccuracy");
+const suggestionFormPath = "SuggestionForm.html";
 
 const previewAccentThemes = {
 	ocean: {
@@ -43,17 +45,27 @@ function createRandomSlug() {
 	return `${base}-${suffix}`;
 }
 
+function buildSuggestionFormLink(ref) {
+	return `${suggestionFormPath}?ref=${encodeURIComponent(ref || createRandomSlug())}`;
+}
+
+function openSuggestionFormInApp(slug) {
+	window.location.href = `../User/${buildSuggestionFormLink(slug)}`;
+}
+
 function setGeneratedLink(slug, shouldPersist) {
+	const suggestionLink = buildSuggestionFormLink(slug);
+
 	if (generatedSlug) {
-		generatedSlug.value = slug;
+		generatedSlug.value = suggestionLink;
 	}
 
 	if (previewSlug) {
-		previewSlug.textContent = slug;
+		previewSlug.textContent = suggestionLink;
 	}
 
 	if (previewSlugMirror) {
-		previewSlugMirror.textContent = `campusvoice.ai/${slug}`;
+		previewSlugMirror.textContent = `campusvoice.ai/${suggestionLink}`;
 	}
 
 	if (shouldPersist && window.CampusVoiceAdminState) {
@@ -175,7 +187,7 @@ function syncFromState(state) {
 	}
 
 	if (previewSlugMirror) {
-		previewSlugMirror.textContent = `campusvoice.ai/${state.generatedSlug}`;
+		previewSlugMirror.textContent = `campusvoice.ai/${buildSuggestionFormLink(state.generatedSlug)}`;
 	}
 
 	setPreviewAccent(state.previewAccent || "ocean", false);
@@ -206,6 +218,13 @@ if (regenerateLinkButton && generatedSlug) {
 		if (linkFeedback) {
 			linkFeedback.textContent = "New link generated and synced.";
 		}
+	});
+}
+
+if (openGeneratedLinkButton && generatedSlug) {
+	openGeneratedLinkButton.addEventListener("click", () => {
+		const currentState = window.CampusVoiceAdminState?.getState();
+		openSuggestionFormInApp(currentState?.generatedSlug || createRandomSlug());
 	});
 }
 

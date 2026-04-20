@@ -168,6 +168,12 @@
 		const actionItems = Array.from(menu.querySelectorAll(".admin-profile-item"));
 		actionItems.forEach((item) => {
 			item.addEventListener("click", () => {
+				if (item.classList.contains("admin-profile-item--logout")) {
+					window.CampusVoiceAdminAuth?.logout();
+					window.location.replace("./Login.html");
+					return;
+				}
+
 				closeAllMenus();
 			});
 		});
