@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Campus Voice AI | AI Categories</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+	<link rel="stylesheet" href="../../CSS/Admin/aiCategories.css" />
+</head>
+<body class="admin-dashboard-page">
+	<main class="admin-dashboard-shell">
+		<aside class="admin-sidebar">
+			<div class="admin-brand">
+				<div class="admin-brand-mark" aria-hidden="true">
+					<svg viewBox="0 0 24 24">
+						<path d="M6.5 16.2c-1.2-1.2-1.9-2.8-1.9-4.5 0-4.1 3.5-7.5 7.8-7.5s7.8 3.4 7.8 7.5-3.5 7.5-7.8 7.5c-.8 0-1.6-.1-2.3-.3L6 20.1l.5-3.9Z" />
+					</svg>
+				</div>
+				<div>
+					<div class="admin-brand-name">Campus Voice</div>
+					<div class="admin-brand-sub">Organization Control Center</div>
+				</div>
+			</div>
+
+			<nav class="admin-nav" aria-label="Admin navigation">
+				<a class="admin-nav-item" href="./AdminDashboard.html"><i class="bi bi-speedometer2" aria-hidden="true"></i>Dashboard</a>
+				<a class="admin-nav-item" href="./AdminSuggestion.html"><i class="bi bi-chat-dots" aria-hidden="true"></i>Suggestions</a>
+				<a class="admin-nav-item" href="./AdminPublicStat.html"><i class="bi bi-bar-chart-line" aria-hidden="true"></i>Public Stats</a>
+				<a class="admin-nav-item is-active" href="./AdminAICategories.html"><i class="bi bi-diagram-3" aria-hidden="true"></i>AI Categories</a>
+				<a class="admin-nav-item" href="./AdminReports.html"><i class="bi bi-file-earmark-text" aria-hidden="true"></i>Reports</a>
+			</nav>
+
+			<div class="admin-sidebar-card">
+				<div class="admin-sidebar-card-label">Active Organization</div>
+				<div class="admin-sidebar-card-value">Computer Society</div>
+				<div class="admin-sidebar-card-note">Campus Voice AI</div>
+			</div>
+		</aside>
+
+		<section class="admin-main">
+			<header class="admin-topbar">
+				<div>
+					<div class="admin-kicker">Private Admin Dashboard</div>
+					<h1 class="admin-title">AI Categories</h1>
+				</div>
+				<div class="admin-topbar-actions">
+					<button class="admin-bell-btn" type="button" aria-label="Notifications">
+						<i class="bi bi-bell-fill" aria-hidden="true"></i>
+					</button>
+					<div class="admin-profile-menu" data-admin-profile-menu>
+						<button class="admin-profile-trigger" type="button" aria-label="Profile menu" data-admin-profile-trigger>
+							<i class="bi bi-person-fill" aria-hidden="true"></i>
+						</button>
+						<div class="admin-profile-dropdown" role="menu" aria-label="Profile options">
+							<button class="admin-profile-item" type="button" role="menuitem" data-profile-action="profile"><i class="bi bi-person-circle" aria-hidden="true"></i>Profile</button>
+							<button class="admin-profile-item" type="button" role="menuitem" data-profile-action="settings"><i class="bi bi-gear" aria-hidden="true"></i>Settings</button>
+							<button class="admin-profile-item admin-profile-item--logout" type="button" role="menuitem"><i class="bi bi-box-arrow-right" aria-hidden="true"></i>Log out</button>
+						</div>
+					</div>
+				</div>
+			</header>
+
+			<section class="admin-panel is-active" data-admin-panel="ai-categories">
+				<section class="admin-ai-toolbar">
+					<div class="admin-ai-toolbar-copy">
+						<div class="admin-panel-label">Classifier Control Center</div>
+						<h2>Manage AI category logic and routing</h2>
+						<p>Define category labels, tune confidence behavior, and review low-confidence suggestions before they affect public reporting.</p>
+					</div>
+					<div class="admin-ai-toolbar-actions">
+						<button class="admin-secondary-btn" id="syncCategoryStats" type="button">Sync from Suggestions</button>
+						<button class="admin-primary-btn" id="saveCategoryRules" type="button">Save Rules</button>
+					</div>
+				</section>
+				<div class="admin-ai-live-sync" id="aiLiveSyncStatus">Live sync ready. Changes here update the other admin tabs instantly.</div>
+
+				<section class="admin-stats-grid admin-stats-grid--ai">
+					<article class="admin-stat-card">
+						<div class="admin-stat-label">Active Categories</div>
+						<div class="admin-stat-value" id="aiActiveCategoryCount">0</div>
+						<div class="admin-stat-note">Current classifier taxonomy</div>
+					</article>
+					<article class="admin-stat-card">
+						<div class="admin-stat-label">Low Confidence Queue</div>
+						<div class="admin-stat-value" id="aiLowConfidenceCount">0</div>
+						<div class="admin-stat-note">Suggestions awaiting review</div>
+					</article>
+					<article class="admin-stat-card">
+						<div class="admin-stat-label">Avg Confidence</div>
+						<div class="admin-stat-value" id="aiAverageConfidence">0%</div>
+						<div class="admin-stat-note">Across all active categories</div>
+					</article>
+					<article class="admin-stat-card">
+						<div class="admin-stat-label">Auto-routed</div>
+						<div class="admin-stat-value" id="aiAutoRoutedRate">0%</div>
+						<div class="admin-stat-note">Confidence above routing threshold</div>
+					</article>
+				</section>
+
+				<section class="admin-ai-grid">
+					<article class="admin-card" id="aiCategoryManagerCard">
+						<div class="admin-panel-label">Category Manager</div>
+						<h3>Create and prioritize categories</h3>
+
+						<form class="admin-ai-form" id="categoryForm">
+							<label for="categoryNameInput">Category Name</label>
+							<input class="admin-filter" id="categoryNameInput" type="text" maxlength="32" placeholder="Example: Campus Wellness" required />
+
+							<div class="admin-ai-form-grid">
+								<div>
+									<label for="categoryPriorityInput">Priority</label>
+									<select class="admin-filter" id="categoryPriorityInput">
+										<option value="high">High</option>
+										<option value="medium" selected>Medium</option>
+										<option value="low">Low</option>
+									</select>
+								</div>
+								<div>
+									<label for="categoryRouteInput">Routing Team</label>
+									<select class="admin-filter" id="categoryRouteInput">
+										<option value="Facilities Team">Facilities Team</option>
+										<option value="Student Affairs">Student Affairs</option>
+										<option value="Academic Office">Academic Office</option>
+										<option value="Campus Security">Campus Security</option>
+									</select>
+								</div>
+							</div>
+
+							<div class="admin-ai-form-grid">
+								<div>
+									<label for="categorySlaInput">SLA Target</label>
+									<select class="admin-filter" id="categorySlaInput">
+										<option value="12h">12 hours</option>
+										<option value="24h" selected>24 hours</option>
+										<option value="48h">48 hours</option>
+									</select>
+								</div>
+								<div>
+									<label for="categoryConfidenceInput">Expected Confidence</label>
+									<input class="admin-filter" id="categoryConfidenceInput" type="number" min="50" max="99" value="84" />
+								</div>
+							</div>
+
+							<label for="categoryKeywordInput">Keyword Hints</label>
+							<input class="admin-filter" id="categoryKeywordInput" type="text" maxlength="70" placeholder="Add comma-separated hints, e.g. parking, gate, traffic" />
+
+							<div class="admin-link-actions">
+								<button class="admin-primary-btn" type="submit">Add Category</button>
+							</div>
+						</form>
+
+						<div class="admin-ai-list" id="categoryList" aria-live="polite"></div>
+					</article>
+
+					<article class="admin-card" id="aiRulesCard">
+						<div class="admin-panel-label">Model Rules</div>
+						<h3>Thresholds and automation behavior</h3>
+
+						<div class="admin-ai-rule-block">
+							<label for="routingThresholdInput">Auto-route confidence threshold</label>
+							<div class="admin-ai-threshold-row">
+								<input id="routingThresholdInput" type="range" min="60" max="95" value="80" />
+								<strong id="routingThresholdValue">80%</strong>
+							</div>
+						</div>
+
+						<div class="admin-ai-toggle-list">
+							<label><input type="checkbox" id="uncertainQueueToggle" checked /> Queue uncertain suggestions for admin review</label>
+							<label><input type="checkbox" id="publicBucketToggle" checked /> Keep public stats categories synchronized</label>
+							<label><input type="checkbox" id="keywordBoostToggle" checked /> Prioritize keyword hint matching</label>
+						</div>
+
+						<div class="admin-ai-rule-block admin-ai-rule-simulator">
+							<label for="aiRuleTestInput">Quick classifier test</label>
+							<textarea id="aiRuleTestInput" maxlength="180" placeholder="Paste a sample suggestion to preview category, confidence, and routing."></textarea>
+							<div class="admin-ai-sim-result" id="aiRuleTestResult">Type a sample suggestion to preview classification behavior.</div>
+						</div>
+
+						<div class="admin-ai-keyword-pool">
+							<div class="admin-panel-label">Common keyword hints</div>
+							<div class="admin-ai-tags" id="keywordHintPool">
+								<span>aircon</span>
+								<span>queueing</span>
+								<span>canteen</span>
+								<span>wifi</span>
+								<span>security</span>
+								<span>grading</span>
+							</div>
+						</div>
+
+						<div class="admin-ai-status" id="categorySaveStatus">No pending saves.</div>
+					</article>
+
+					<article class="admin-card" id="aiReviewQueueCard">
+						<div class="admin-panel-label">Low Confidence Review</div>
+						<h3>Recategorize uncertain suggestions</h3>
+						<div class="admin-ai-review-list" id="reviewQueueList"></div>
+						<div class="admin-ai-status" id="reviewQueueStatus">Queue ready for review.</div>
+					</article>
+
+					<article class="admin-card" id="aiPublicMapCard">
+						<div class="admin-panel-label">Public Category Mapping</div>
+						<h3>Internal labels shown to students</h3>
+						<ul class="admin-ai-mapping" id="publicMappingList"></ul>
+					</article>
+				</section>
+			</section>
+		</section>
+	</main>
+
+	<script src="../../JS/Admin/adminTopbarMenu.js"></script>
+	<script src="../../JS/Admin/adminAccountModal.js"></script>
+	<script src="../../JS/Admin/adminNav.js"></script>
+	<script src="../../JS/Admin/adminState.js"></script>
+	<script src="../../JS/Admin/adminAICategories.js"></script>
+</body>
+</html>

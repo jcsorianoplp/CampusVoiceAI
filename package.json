@@ -1,0 +1,49 @@
+{
+  "name": "hci_aisorting",
+  "version": "1.0.0",
+  "description": "Campus Voice AI admin desktop app built with Electron.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jcsorianoplp/CampusVoiceAI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jcsorianoplp/CampusVoiceAI/issues"
+  },
+  "homepage": "https://github.com/jcsorianoplp/CampusVoiceAI#readme",
+  "build": {
+    "appId": "com.campusvoice.ai",
+    "productName": "Campus Voice AI",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "HTML/**/*",
+      "CSS/**/*",
+      "JS/**/*",
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": "nsis",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    }
+  },
+  "devDependencies": {
+    "@ljharb/tsconfig": "^0.3.2",
+    "electron": "^41.2.1",
+    "electron-builder": "^26.8.1"
+  }
+}

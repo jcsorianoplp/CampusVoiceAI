@@ -26,11 +26,11 @@
 			</div>
 
 			<nav class="admin-nav" aria-label="Admin navigation">
-				<a class="admin-nav-item" href="./AdminDashboard.html">Dashboard</a>
-				<a class="admin-nav-item" href="./AdminSuggestion.html">Suggestions</a>
-				<a class="admin-nav-item is-active" href="./AdminPublicStat.html">Public Stats</a>
-				<button class="admin-nav-item" type="button" disabled>AI Categories</button>
-				<button class="admin-nav-item" type="button" disabled>Reports</button>
+				<a class="admin-nav-item" href="./AdminDashboard.html"><i class="bi bi-speedometer2" aria-hidden="true"></i>Dashboard</a>
+				<a class="admin-nav-item" href="./AdminSuggestion.html"><i class="bi bi-chat-dots" aria-hidden="true"></i>Suggestions</a>
+				<a class="admin-nav-item is-active" href="./AdminPublicStat.html"><i class="bi bi-bar-chart-line" aria-hidden="true"></i>Public Stats</a>
+				<a class="admin-nav-item" href="./AdminAICategories.html"><i class="bi bi-diagram-3" aria-hidden="true"></i>AI Categories</a>
+				<a class="admin-nav-item" href="./AdminReports.html"><i class="bi bi-file-earmark-text" aria-hidden="true"></i>Reports</a>
 			</nav>
 
 			<div class="admin-sidebar-card">
@@ -47,8 +47,19 @@
 					<h1 class="admin-title">Public Stats</h1>
 				</div>
 				<div class="admin-topbar-actions">
-					<button class="admin-icon-btn" type="button" aria-label="Notifications">🔔</button>
-					<button class="admin-icon-btn" type="button" aria-label="Profile">👤</button>
+					<button class="admin-bell-btn" type="button" aria-label="Notifications">
+						<i class="bi bi-bell-fill" aria-hidden="true"></i>
+					</button>
+					<div class="admin-profile-menu" data-admin-profile-menu>
+						<button class="admin-profile-trigger" type="button" aria-label="Profile menu" data-admin-profile-trigger>
+							<i class="bi bi-person-fill" aria-hidden="true"></i>
+						</button>
+						<div class="admin-profile-dropdown" role="menu" aria-label="Profile options">
+							<button class="admin-profile-item" type="button" role="menuitem" data-profile-action="profile"><i class="bi bi-person-circle" aria-hidden="true"></i>Profile</button>
+							<button class="admin-profile-item" type="button" role="menuitem" data-profile-action="settings"><i class="bi bi-gear" aria-hidden="true"></i>Settings</button>
+							<button class="admin-profile-item admin-profile-item--logout" type="button" role="menuitem"><i class="bi bi-box-arrow-right" aria-hidden="true"></i>Log out</button>
+						</div>
+					</div>
 				</div>
 			</header>
 
@@ -96,15 +107,7 @@
 					<article class="admin-card" id="publicTrendCard">
 						<div class="admin-panel-label">Trend Overview</div>
 						<h3>Submissions and resolutions</h3>
-						<div class="admin-trend-chart" id="publicTrendChart" aria-label="Submission trend chart">
-							<div class="trend-bar" data-trend-index="0"><span></span></div>
-							<div class="trend-bar" data-trend-index="1"><span></span></div>
-							<div class="trend-bar" data-trend-index="2"><span></span></div>
-							<div class="trend-bar" data-trend-index="3"><span></span></div>
-							<div class="trend-bar" data-trend-index="4"><span></span></div>
-							<div class="trend-bar" data-trend-index="5"><span></span></div>
-							<div class="trend-bar" data-trend-index="6"><span></span></div>
-						</div>
+						<div class="admin-trend-chart" id="publicTrendChart" aria-label="Submission trend chart"></div>
 						<div class="admin-trend-legend">
 							<span><i class="bi bi-square-fill"></i> Submissions</span>
 							<span><i class="bi bi-square-fill"></i> Resolved</span>
@@ -165,6 +168,10 @@
 		</section>
 	</main>
 
+	<script src="../../JS/Admin/adminTopbarMenu.js"></script>
+	<script src="../../JS/Admin/adminAccountModal.js"></script>
+	<script src="../../JS/Admin/adminNav.js"></script>
+	<script src="../../JS/Admin/adminState.js"></script>
 	<script src="../../JS/Admin/adminPublicStat.js"></script>
 </body>
 </html>

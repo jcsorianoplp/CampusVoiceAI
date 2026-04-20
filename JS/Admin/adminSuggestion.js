@@ -16,12 +16,52 @@ function initAdminSuggestionPage() {
 	const suggestionBoard = document.getElementById("suggestionBoard");
 	const suggestionEmptyState = document.getElementById("suggestionEmptyState");
 	const viewToggleButtons = Array.from(document.querySelectorAll("[data-view-mode]"));
+	const suggestionTotalCount = document.getElementById("suggestionTotalCount");
+	const suggestionOpenCount = document.getElementById("suggestionOpenCount");
+	const suggestionResolvedCount = document.getElementById("suggestionResolvedCount");
 
 	if (!suggestionBoard) {
 		return false;
 	}
 
 	const cards = Array.from(suggestionBoard.querySelectorAll("[data-category][data-status][data-sentiment]"));
+
+	function syncMetaCounts(state) {
+		if (!state) return;
+
+		if (suggestionTotalCount) {
+			suggestionTotalCount.textContent = `${state.suggestions.length} total`;
+		}
+
+		if (suggestionOpenCount) {
+			const openCount = state.suggestions.filter((suggestion) => suggestion.status === "open").length;
+			suggestionOpenCount.textContent = `${openCount} open`;
+		}
+
+		if (suggestionResolvedCount) {
+			const resolvedCount = state.suggestions.filter((suggestion) => suggestion.status === "resolved").length;
+			suggestionResolvedCount.textContent = `${resolvedCount} resolved`;
+		}
+	}
+
+	function syncCategoryOptions(state) {
+		if (!categoryFilter || !state) return;
+
+		const selectedValue = categoryFilter.value;
+		const categoryNames = Array.from(new Set([
+			...state.categories.map((category) => category.name),
+			...state.suggestions.map((suggestion) => suggestion.category)
+		]));
+
+		categoryFilter.innerHTML = [
+			'<option value="all">All Categories</option>',
+			...categoryNames.map((name) => `<option value="${name}">${name}</option>`)
+		].join("");
+
+		if (categoryNames.includes(selectedValue) || selectedValue === "all") {
+			categoryFilter.value = selectedValue;
+		}
+	}
 
 	function updateSuggestionBoardVisibility() {
 		const searchValue = normalize(suggestionSearch ? suggestionSearch.value : "");
@@ -89,6 +129,14 @@ function initAdminSuggestionPage() {
 			setSuggestionViewMode(button.dataset.viewMode);
 		});
 	});
+
+	if (window.CampusVoiceAdminState) {
+		window.CampusVoiceAdminState.subscribe((state) => {
+			syncMetaCounts(state);
+			syncCategoryOptions(state);
+			updateSuggestionBoardVisibility();
+		});
+	}
 
 	setSuggestionViewMode("list");
 	updateSuggestionBoardVisibility();

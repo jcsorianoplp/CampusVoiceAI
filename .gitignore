@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+release/
+dist/
+
+# Electron packaging/debug artifacts
+*.blockmap
+latest*.yml
+builder-debug.yml
+builder-effective-config.yaml
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+.vscode/*.code-workspace

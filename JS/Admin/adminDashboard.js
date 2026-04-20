@@ -8,14 +8,10 @@ const publicPreviewCard = document.getElementById("publicPreviewCard");
 const previewAccentButtons = Array.from(document.querySelectorAll("[data-preview-accent]"));
 const overviewSnapshotList = document.getElementById("overviewSnapshotList");
 
-const slugSeeds = [
-	"computer-society",
-	"student-affairs",
-	"campus-safety",
-	"events-board",
-	"academic-help",
-	"org-feedback"
-];
+const dashboardTotalSuggestions = document.getElementById("dashboardTotalSuggestions");
+const dashboardTopCategory = document.getElementById("dashboardTopCategory");
+const dashboardResponseRate = document.getElementById("dashboardResponseRate");
+const dashboardAiAccuracy = document.getElementById("dashboardAiAccuracy");
 
 const previewAccentThemes = {
 	ocean: {
@@ -32,23 +28,13 @@ const previewAccentThemes = {
 	}
 };
 
-const suggestionRecords = [
-	{
-		time: "2 min ago",
-		category: "Campus Facilities",
-		status: "open",
-		statusLabel: "Open",
-		sentiment: "Neutral",
-		text: "The library air-conditioning is too weak in the afternoon."
-	},
-	{
-		time: "15 min ago",
-		category: "Student Life",
-		status: "progress",
-		statusLabel: "In Progress",
-		sentiment: "Positive",
-		text: "Can we have more student org activities between midterms and finals week?"
-	}
+const slugSeeds = [
+	"computer-society",
+	"student-affairs",
+	"campus-safety",
+	"events-board",
+	"academic-help",
+	"org-feedback"
 ];
 
 function createRandomSlug() {
@@ -57,7 +43,7 @@ function createRandomSlug() {
 	return `${base}-${suffix}`;
 }
 
-function setGeneratedLink(slug) {
+function setGeneratedLink(slug, shouldPersist) {
 	if (generatedSlug) {
 		generatedSlug.value = slug;
 	}
@@ -69,9 +55,13 @@ function setGeneratedLink(slug) {
 	if (previewSlugMirror) {
 		previewSlugMirror.textContent = `campusvoice.ai/${slug}`;
 	}
+
+	if (shouldPersist && window.CampusVoiceAdminState) {
+		window.CampusVoiceAdminState.updateState({ generatedSlug: slug }, "dashboard-link");
+	}
 }
 
-function setPreviewAccent(themeName) {
+function setPreviewAccent(themeName, shouldPersist) {
 	const theme = previewAccentThemes[themeName] || previewAccentThemes.ocean;
 
 	if (publicPreviewCard) {
@@ -80,9 +70,12 @@ function setPreviewAccent(themeName) {
 	}
 
 	previewAccentButtons.forEach((button) => {
-		const isActive = button.dataset.previewAccent === themeName;
-		button.classList.toggle("is-active", isActive);
+		button.classList.toggle("is-active", button.dataset.previewAccent === themeName);
 	});
+
+	if (shouldPersist && window.CampusVoiceAdminState) {
+		window.CampusVoiceAdminState.updateState({ previewAccent: themeName }, "dashboard-accent");
+	}
 }
 
 async function copyTextToClipboard(text) {
@@ -99,12 +92,37 @@ async function copyTextToClipboard(text) {
 	tempInput.remove();
 }
 
-function renderOverviewSnapshot() {
+function getCategoryTotals(categories, suggestions) {
+	const categoryMap = new Map();
+
+	categories.forEach((category) => {
+		categoryMap.set(category.name, {
+			name: category.name,
+			volume: category.volume || 0,
+			confidence: category.confidence || 0
+		});
+	});
+
+	suggestions.forEach((suggestion) => {
+		const entry = categoryMap.get(suggestion.category) || {
+			name: suggestion.category,
+			volume: 0,
+			confidence: 0
+		};
+		entry.volume += 1;
+		categoryMap.set(suggestion.category, entry);
+	});
+
+	return Array.from(categoryMap.values()).sort((left, right) => right.volume - left.volume);
+}
+
+function renderOverviewSnapshot(state) {
 	if (!overviewSnapshotList) {
 		return;
 	}
 
-	overviewSnapshotList.innerHTML = suggestionRecords
+	const recentRecords = state.suggestions.slice(0, 3);
+	overviewSnapshotList.innerHTML = recentRecords
 		.map((record) => `
 			<article class="admin-snapshot-item">
 				<div class="admin-snapshot-top">
@@ -121,28 +139,72 @@ function renderOverviewSnapshot() {
 		.join("");
 }
 
-if (generatedSlug) {
-	setGeneratedLink(createRandomSlug());
+function renderDashboardStats(state) {
+	if (dashboardTotalSuggestions) {
+		dashboardTotalSuggestions.textContent = String(state.suggestions.length);
+	}
+
+	const totals = getCategoryTotals(state.categories, state.suggestions);
+	const topCategory = totals[0];
+
+	if (dashboardTopCategory) {
+		dashboardTopCategory.textContent = topCategory ? topCategory.name.replace(/^Campus\s+/i, "") : "No data";
+	}
+
+	if (dashboardResponseRate) {
+		const resolvedCount = state.suggestions.filter((suggestion) => suggestion.status === "resolved").length;
+		const responseRate = state.suggestions.length ? Math.round((resolvedCount / state.suggestions.length) * 100) : 0;
+		dashboardResponseRate.textContent = `${responseRate}%`;
+	}
+
+	if (dashboardAiAccuracy) {
+		const averageConfidence = state.categories.length
+			? Math.round(state.categories.reduce((sum, category) => sum + (category.confidence || 0), 0) / state.categories.length)
+			: 0;
+		dashboardAiAccuracy.textContent = `${averageConfidence}%`;
+	}
+}
+
+function syncFromState(state) {
+	if (generatedSlug) {
+		generatedSlug.value = state.generatedSlug;
+	}
+
+	if (previewSlug) {
+		previewSlug.textContent = state.generatedSlug;
+	}
+
+	if (previewSlugMirror) {
+		previewSlugMirror.textContent = `campusvoice.ai/${state.generatedSlug}`;
+	}
+
+	setPreviewAccent(state.previewAccent || "ocean", false);
+	renderOverviewSnapshot(state);
+	renderDashboardStats(state);
+}
+
+if (window.CampusVoiceAdminState) {
+	window.CampusVoiceAdminState.subscribe((state, meta) => {
+		syncFromState(state);
+		if (linkFeedback && meta.source && meta.source !== "init") {
+			linkFeedback.textContent = `Live sync from ${meta.source.replace(/-/g, " ")}.`;
+		}
+	});
 }
 
 if (previewAccentButtons.length > 0) {
-	const initialAccent = previewAccentButtons.find((button) => button.classList.contains("is-active"))?.dataset.previewAccent || previewAccentButtons[0].dataset.previewAccent;
-	setPreviewAccent(initialAccent);
-
 	previewAccentButtons.forEach((button) => {
 		button.addEventListener("click", () => {
-			setPreviewAccent(button.dataset.previewAccent);
+			setPreviewAccent(button.dataset.previewAccent, true);
 		});
 	});
 }
 
-renderOverviewSnapshot();
-
 if (regenerateLinkButton && generatedSlug) {
 	regenerateLinkButton.addEventListener("click", () => {
-		setGeneratedLink(createRandomSlug());
+		setGeneratedLink(createRandomSlug(), true);
 		if (linkFeedback) {
-			linkFeedback.textContent = "New link generated.";
+			linkFeedback.textContent = "New link generated and synced.";
 		}
 	});
 }
@@ -161,4 +223,12 @@ if (copyGeneratedLinkButton && generatedSlug) {
 			}
 		}
 	});
+}
+
+if (window.CampusVoiceAdminState) {
+	const initialState = window.CampusVoiceAdminState.getState();
+	setGeneratedLink(initialState.generatedSlug, false);
+	renderOverviewSnapshot(initialState);
+	renderDashboardStats(initialState);
+	setPreviewAccent(initialState.previewAccent || "ocean", false);
 }

@@ -26,11 +26,11 @@
 			</div>
 
 			<nav class="admin-nav" aria-label="Admin navigation">
-				<a class="admin-nav-item is-active" href="./AdminDashboard.html">Dashboard</a>
-				<a class="admin-nav-item" href="./AdminSuggestion.html">Suggestions</a>
-				<a class="admin-nav-item" href="./AdminPublicStat.html">Public Stats</a>
-				<button class="admin-nav-item" type="button" disabled>AI Categories</button>
-				<button class="admin-nav-item" type="button" disabled>Reports</button>
+				<a class="admin-nav-item is-active" href="./AdminDashboard.html"><i class="bi bi-speedometer2" aria-hidden="true"></i>Dashboard</a>
+				<a class="admin-nav-item" href="./AdminSuggestion.html"><i class="bi bi-chat-dots" aria-hidden="true"></i>Suggestions</a>
+				<a class="admin-nav-item" href="./AdminPublicStat.html"><i class="bi bi-bar-chart-line" aria-hidden="true"></i>Public Stats</a>
+				<a class="admin-nav-item" href="./AdminAICategories.html"><i class="bi bi-diagram-3" aria-hidden="true"></i>AI Categories</a>
+				<a class="admin-nav-item" href="./AdminReports.html"><i class="bi bi-file-earmark-text" aria-hidden="true"></i>Reports</a>
 			</nav>
 
 			<div class="admin-sidebar-card">
@@ -47,8 +47,19 @@
 					<h1 class="admin-title">Admin Dashboard</h1>
 				</div>
 				<div class="admin-topbar-actions">
-					<button class="admin-icon-btn" type="button" aria-label="Notifications">🔔</button>
-					<button class="admin-icon-btn" type="button" aria-label="Profile">👤</button>
+					<button class="admin-bell-btn" type="button" aria-label="Notifications">
+						<i class="bi bi-bell-fill" aria-hidden="true"></i>
+					</button>
+					<div class="admin-profile-menu" data-admin-profile-menu>
+						<button class="admin-profile-trigger" type="button" aria-label="Profile menu" data-admin-profile-trigger>
+							<i class="bi bi-person-fill" aria-hidden="true"></i>
+						</button>
+						<div class="admin-profile-dropdown" role="menu" aria-label="Profile options">
+							<button class="admin-profile-item" type="button" role="menuitem" data-profile-action="profile"><i class="bi bi-person-circle" aria-hidden="true"></i>Profile</button>
+							<button class="admin-profile-item" type="button" role="menuitem" data-profile-action="settings"><i class="bi bi-gear" aria-hidden="true"></i>Settings</button>
+							<button class="admin-profile-item admin-profile-item--logout" type="button" role="menuitem"><i class="bi bi-box-arrow-right" aria-hidden="true"></i>Log out</button>
+						</div>
+					</div>
 				</div>
 			</header>
 
@@ -76,22 +87,22 @@
 				<section class="admin-stats-grid">
 					<article class="admin-stat-card">
 						<div class="admin-stat-label">Total Suggestions</div>
-						<div class="admin-stat-value">124</div>
+						<div class="admin-stat-value" id="dashboardTotalSuggestions">124</div>
 						<div class="admin-stat-note"><span class="positive">↑ 12%</span> this week</div>
 					</article>
 					<article class="admin-stat-card">
 						<div class="admin-stat-label">Top Category</div>
-						<div class="admin-stat-value">Facilities</div>
+						<div class="admin-stat-value" id="dashboardTopCategory">Facilities</div>
 						<div class="admin-stat-note">32 suggestions</div>
 					</article>
 					<article class="admin-stat-card">
 						<div class="admin-stat-label">Response Rate</div>
-						<div class="admin-stat-value">67%</div>
+						<div class="admin-stat-value" id="dashboardResponseRate">67%</div>
 						<div class="admin-stat-note"><span class="positive">↑ 2.1%</span> from last month</div>
 					</article>
 					<article class="admin-stat-card">
 						<div class="admin-stat-label">AI Accuracy</div>
-						<div class="admin-stat-value">94.7%</div>
+						<div class="admin-stat-value" id="dashboardAiAccuracy">94.7%</div>
 						<div class="admin-stat-note">Category matching</div>
 					</article>
 				</section>
@@ -203,6 +214,10 @@
 		</section>
 	</main>
 
+	<script src="../../JS/Admin/adminTopbarMenu.js"></script>
+	<script src="../../JS/Admin/adminAccountModal.js"></script>
+	<script src="../../JS/Admin/adminNav.js"></script>
+	<script src="../../JS/Admin/adminState.js"></script>
 	<script src="../../JS/Admin/adminDashboard.js"></script>
 </body>
 </html>

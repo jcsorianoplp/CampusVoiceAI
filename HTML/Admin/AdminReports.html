@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Campus Voice AI | Reports</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+	<link rel="stylesheet" href="../../CSS/Admin/reports.css" />
+</head>
+<body class="admin-dashboard-page">
+	<main class="admin-dashboard-shell">
+		<aside class="admin-sidebar">
+			<div class="admin-brand">
+				<div class="admin-brand-mark" aria-hidden="true">
+					<svg viewBox="0 0 24 24">
+						<path d="M6.5 16.2c-1.2-1.2-1.9-2.8-1.9-4.5 0-4.1 3.5-7.5 7.8-7.5s7.8 3.4 7.8 7.5-3.5 7.5-7.8 7.5c-.8 0-1.6-.1-2.3-.3L6 20.1l.5-3.9Z" />
+					</svg>
+				</div>
+				<div>
+					<div class="admin-brand-name">Campus Voice</div>
+					<div class="admin-brand-sub">Organization Control Center</div>
+				</div>
+			</div>
+
+			<nav class="admin-nav" aria-label="Admin navigation">
+				<a class="admin-nav-item" href="./AdminDashboard.html"><i class="bi bi-speedometer2" aria-hidden="true"></i>Dashboard</a>
+				<a class="admin-nav-item" href="./AdminSuggestion.html"><i class="bi bi-chat-dots" aria-hidden="true"></i>Suggestions</a>
+				<a class="admin-nav-item" href="./AdminPublicStat.html"><i class="bi bi-bar-chart-line" aria-hidden="true"></i>Public Stats</a>
+				<a class="admin-nav-item" href="./AdminAICategories.html"><i class="bi bi-diagram-3" aria-hidden="true"></i>AI Categories</a>
+				<a class="admin-nav-item is-active" href="./AdminReports.html"><i class="bi bi-file-earmark-text" aria-hidden="true"></i>Reports</a>
+			</nav>
+
+			<div class="admin-sidebar-card">
+				<div class="admin-sidebar-card-label">Active Organization</div>
+				<div class="admin-sidebar-card-value">Computer Society</div>
+				<div class="admin-sidebar-card-note">Campus Voice AI</div>
+			</div>
+		</aside>
+
+		<section class="admin-main">
+			<header class="admin-topbar">
+				<div>
+					<div class="admin-kicker">Private Admin Dashboard</div>
+					<h1 class="admin-title">Reports</h1>
+				</div>
+				<div class="admin-topbar-actions">
+					<button class="admin-bell-btn" type="button" aria-label="Notifications">
+						<i class="bi bi-bell-fill" aria-hidden="true"></i>
+					</button>
+					<div class="admin-profile-menu" data-admin-profile-menu>
+						<button class="admin-profile-trigger" type="button" aria-label="Profile menu" data-admin-profile-trigger>
+							<i class="bi bi-person-fill" aria-hidden="true"></i>
+						</button>
+						<div class="admin-profile-dropdown" role="menu" aria-label="Profile options">
+							<button class="admin-profile-item" type="button" role="menuitem" data-profile-action="profile"><i class="bi bi-person-circle" aria-hidden="true"></i>Profile</button>
+							<button class="admin-profile-item" type="button" role="menuitem" data-profile-action="settings"><i class="bi bi-gear" aria-hidden="true"></i>Settings</button>
+							<button class="admin-profile-item admin-profile-item--logout" type="button" role="menuitem"><i class="bi bi-box-arrow-right" aria-hidden="true"></i>Log out</button>
+						</div>
+					</div>
+				</div>
+			</header>
+
+			<section class="admin-panel is-active" data-admin-panel="reports">
+				<section class="admin-report-toolbar">
+					<div>
+						<div class="admin-panel-label">Reporting Center</div>
+						<h2>Generate clear reports for your organization</h2>
+						<p>Build a summary with category, status, and sentiment insights that updates as your admin data changes.</p>
+					</div>
+					<div class="admin-report-live" id="reportLiveStatus">Live reporting ready.</div>
+				</section>
+
+				<section class="admin-stats-grid admin-stats-grid--reports">
+					<article class="admin-stat-card">
+						<div class="admin-stat-label">Suggestions In Scope</div>
+						<div class="admin-stat-value" id="reportSuggestionCount">0</div>
+						<div class="admin-stat-note">Filtered by report range</div>
+					</article>
+					<article class="admin-stat-card">
+						<div class="admin-stat-label">Resolution Rate</div>
+						<div class="admin-stat-value" id="reportResolutionRate">0%</div>
+						<div class="admin-stat-note">Resolved vs in-scope</div>
+					</article>
+					<article class="admin-stat-card">
+						<div class="admin-stat-label">Avg Category Confidence</div>
+						<div class="admin-stat-value" id="reportConfidenceAvg">0%</div>
+						<div class="admin-stat-note">From AI category profiles</div>
+					</article>
+					<article class="admin-stat-card">
+						<div class="admin-stat-label">Queue Backlog</div>
+						<div class="admin-stat-value" id="reportQueueBacklog">0</div>
+						<div class="admin-stat-note">Low-confidence waiting review</div>
+					</article>
+				</section>
+
+				<section class="admin-reports-grid">
+					<article class="admin-card" id="reportBuilderCard">
+						<div class="admin-panel-label">Report Builder</div>
+						<h3>Configure and generate</h3>
+						<form class="admin-report-form" id="reportConfigForm">
+							<label for="reportTitleInput">Report Title</label>
+							<input class="admin-filter" id="reportTitleInput" type="text" maxlength="70" placeholder="Weekly Campus Voice Report" />
+
+							<div class="admin-report-form-grid">
+								<div>
+									<label for="reportRangeSelect">Range</label>
+									<select class="admin-filter" id="reportRangeSelect">
+										<option value="7">Last 7 days</option>
+										<option value="30">Last 30 days</option>
+										<option value="all">All records</option>
+									</select>
+								</div>
+								<div>
+									<label for="reportAudienceSelect">Audience</label>
+									<select class="admin-filter" id="reportAudienceSelect">
+										<option value="Leadership">Leadership</option>
+										<option value="Student Council">Student Council</option>
+										<option value="Advisers">Advisers</option>
+										<option value="Public Summary">Public Summary</option>
+									</select>
+								</div>
+							</div>
+
+							<div class="admin-report-toggles">
+								<label><input type="checkbox" id="reportIncludeCategories" checked /> Include category breakdown</label>
+								<label><input type="checkbox" id="reportIncludeSentiment" checked /> Include sentiment snapshot</label>
+								<label><input type="checkbox" id="reportIncludeQueue" checked /> Include low-confidence queue status</label>
+							</div>
+
+							<div class="admin-link-actions">
+								<button class="admin-primary-btn" type="submit" id="generateReportBtn">Generate Report</button>
+								<button class="admin-secondary-btn" type="button" id="exportCsvBtn">Export CSV</button>
+								<button class="admin-secondary-btn" type="button" id="exportSummaryBtn">Export Summary</button>
+							</div>
+						</form>
+						<div class="admin-ai-status" id="reportActionStatus">No report generated yet.</div>
+					</article>
+
+					<article class="admin-card" id="reportCategoryCard">
+						<div class="admin-panel-label">Category Performance</div>
+						<h3>Top report categories</h3>
+						<div class="admin-report-bars" id="reportCategoryBars"></div>
+					</article>
+
+					<article class="admin-card" id="reportSummaryCard">
+						<div class="admin-panel-label">Generated Summary</div>
+						<h3>Executive-ready narrative</h3>
+						<textarea id="reportSummaryOutput" readonly></textarea>
+					</article>
+
+					<article class="admin-card" id="reportHistoryCard">
+						<div class="admin-panel-label">Report History</div>
+						<h3>Recently generated reports</h3>
+						<ul class="admin-report-history" id="reportHistoryList"></ul>
+					</article>
+				</section>
+			</section>
+		</section>
+	</main>
+
+	<script src="../../JS/Admin/adminTopbarMenu.js"></script>
+	<script src="../../JS/Admin/adminAccountModal.js"></script>
+	<script src="../../JS/Admin/adminNav.js"></script>
+	<script src="../../JS/Admin/adminState.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+	<script src="../../JS/Admin/adminReports.js"></script>
+</body>
+</html>
