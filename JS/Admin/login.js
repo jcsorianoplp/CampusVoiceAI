@@ -3,9 +3,6 @@
 	const usernameInput = document.getElementById("username");
 	const passwordInput = document.getElementById("password");
 
-	const DEFAULT_USERNAME = "admin";
-	const DEFAULT_PASSWORD = "campusvoice123";
-
 	if (!loginForm) {
 		return;
 	}
@@ -36,16 +33,34 @@
 			return;
 		}
 
-		if (username === DEFAULT_USERNAME && password === DEFAULT_PASSWORD) {
-			window.CampusVoiceAdminAuth?.login(username);
-			setMessage("Login successful. Redirecting...", false);
-			window.setTimeout(() => {
-				window.location.replace("./AdminDashboard.html");
-			}, 250);
+		if (!window.campusVoiceDesktop?.loginAdmin) {
+			setMessage("Database login is unavailable right now.", true);
 			return;
 		}
 
-		setMessage("Invalid username or password.", true);
+		setMessage("Checking credentials...", false);
+		window.campusVoiceDesktop.loginAdmin(username, password)
+			.then((result) => {
+				if (!result?.ok) {
+					setMessage(result?.message || "Invalid username or password.", true);
+					return;
+				}
+
+				const admin = result.admin;
+				window.CampusVoiceAdminAuth?.login(admin.username);
+				window.sessionStorage.setItem("campusvoice-admin-role", admin.role || "OrgAdmin");
+				window.sessionStorage.setItem("campusvoice-admin-org-id", String(admin.orgId || ""));
+				window.sessionStorage.setItem("campusvoice-admin-org-name", admin.organizationName || "");
+				window.sessionStorage.setItem("campusvoice-admin-full-name", admin.fullName || "");
+				window.sessionStorage.setItem("campusvoice-admin-username", admin.username || "");
+				setMessage("Login successful. Redirecting...", false);
+				window.setTimeout(() => {
+					window.location.replace("./AdminDashboard.html");
+				}, 250);
+			})
+			.catch((error) => {
+				setMessage(error?.message || "Unable to authenticate user.", true);
+			});
 	});
 
 	const savedUser = window.CampusVoiceAdminAuth?.getLastUser();

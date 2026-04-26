@@ -24,7 +24,7 @@ const exportSummaryBtn = document.getElementById("exportSummaryBtn");
 
 function getProfileState() {
 	try {
-		const raw = window.localStorage.getItem("campusvoice-admin-profile-settings");
+		const raw = window.sessionStorage.getItem("campusvoice-admin-profile-settings");
 		if (!raw) {
 			return {
 				organization: "Computer Society",

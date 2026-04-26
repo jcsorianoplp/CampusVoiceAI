@@ -45,5 +45,8 @@
     "@ljharb/tsconfig": "^0.3.2",
     "electron": "^41.2.1",
     "electron-builder": "^26.8.1"
+  },
+  "dependencies": {
+    "mysql2": "^3.22.2"
   }
 }

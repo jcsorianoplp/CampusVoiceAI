@@ -2,7 +2,7 @@
 	const AUTH_KEY = "campusvoice-admin-authenticated";
 	const LAST_USER_KEY = "campusvoice-admin-last-user";
 	const isLoginPage = window.location.pathname.toLowerCase().includes("login.html");
-	const isAuthenticated = () => window.localStorage.getItem(AUTH_KEY) === "true";
+	const isAuthenticated = () => window.sessionStorage.getItem(AUTH_KEY) === "true";
 
 	function redirectToDashboard() {
 		window.location.replace("./AdminDashboard.html");
@@ -24,16 +24,17 @@
 	window.CampusVoiceAdminAuth = {
 		isAuthenticated,
 		login(username) {
-			window.localStorage.setItem(AUTH_KEY, "true");
+			window.sessionStorage.setItem(AUTH_KEY, "true");
 			if (username) {
-				window.localStorage.setItem(LAST_USER_KEY, username);
+				window.sessionStorage.setItem(LAST_USER_KEY, username);
 			}
 		},
 		logout() {
-			window.localStorage.removeItem(AUTH_KEY);
+			window.sessionStorage.removeItem(AUTH_KEY);
+			window.sessionStorage.removeItem(LAST_USER_KEY);
 		},
 		getLastUser() {
-			return window.localStorage.getItem(LAST_USER_KEY) || "";
+			return window.sessionStorage.getItem(LAST_USER_KEY) || "";
 		},
 		requireLogin
 	};

@@ -203,7 +203,7 @@
 
 	function loadState() {
 		try {
-			const rawState = window.localStorage.getItem(STORAGE_KEY);
+			const rawState = window.sessionStorage.getItem(STORAGE_KEY);
 			if (!rawState) {
 				return clone(DEFAULT_STATE);
 			}
@@ -216,7 +216,7 @@
 
 	function saveState(state, source) {
 		const nextState = mergeDeep(DEFAULT_STATE, state);
-		window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+		window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
 		window.dispatchEvent(new CustomEvent(CHANGE_EVENT, {
 			detail: {
 				source: source || "local",
