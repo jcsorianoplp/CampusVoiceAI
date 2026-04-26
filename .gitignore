@@ -15,6 +15,10 @@ builder-effective-config.yaml
 *.log
 npm-debug.log*
 
+# Local environment variables
+.env
+.env.local
+
 # OS/Editor
 .DS_Store
 Thumbs.db

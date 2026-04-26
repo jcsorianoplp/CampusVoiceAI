@@ -42,6 +42,53 @@
 		</form>
 	</main>
 
+	<div class="reset-modal" id="resetPasswordModal" hidden aria-hidden="true">
+		<div class="reset-modal__backdrop" data-reset-close></div>
+		<section class="reset-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="resetPasswordTitle">
+			<button class="reset-modal__close" type="button" data-reset-close aria-label="Close reset password dialog">&times;</button>
+
+			<div class="reset-modal__header">
+				<div class="reset-modal__eyebrow">Password recovery</div>
+				<h2 id="resetPasswordTitle">Reset your password</h2>
+				<p>Enter your username or email, receive a 6-digit code, then create a new password.</p>
+			</div>
+
+			<form class="reset-modal__form" id="resetRequestForm">
+				<div class="reset-modal__field">
+					<label class="reset-modal__label" for="resetIdentifier">Username or email</label>
+					<input class="reset-modal__input" type="text" id="resetIdentifier" name="resetIdentifier" autocomplete="username email" placeholder="cs_president or admin@campusvoice.ai" />
+				</div>
+				<button class="reset-modal__primary" type="submit" id="sendResetCode">Send reset code</button>
+				<button class="reset-modal__secondary" type="button" id="resetBackToLogin">Back to login</button>
+			</form>
+
+			<form class="reset-modal__form reset-modal__form--hidden" id="resetCompleteForm" hidden>
+				<div class="reset-modal__grid">
+					<div class="reset-modal__field">
+						<label class="reset-modal__label" for="resetCode">6-digit code</label>
+						<input class="reset-modal__input reset-modal__input--code" type="text" id="resetCode" name="resetCode" inputmode="numeric" maxlength="6" placeholder="123456" />
+					</div>
+					<div class="reset-modal__field">
+						<label class="reset-modal__label" for="resetNewPassword">New password</label>
+						<input class="reset-modal__input" type="password" id="resetNewPassword" name="resetNewPassword" autocomplete="new-password" placeholder="Enter new password" />
+					</div>
+					<div class="reset-modal__field">
+						<label class="reset-modal__label" for="resetConfirmPassword">Confirm new password</label>
+						<input class="reset-modal__input" type="password" id="resetConfirmPassword" name="resetConfirmPassword" autocomplete="new-password" placeholder="Re-enter new password" />
+					</div>
+				</div>
+
+				<div class="reset-modal__actions">
+					<button class="reset-modal__primary" type="submit" id="applyResetPassword">Change password</button>
+					<button class="reset-modal__secondary" type="button" id="resetResendCode">Resend code</button>
+					<button class="reset-modal__secondary" type="button" id="resetBackToRequest">Use another account</button>
+				</div>
+			</form>
+
+			<div class="reset-modal__status" id="resetPasswordStatus" aria-live="polite"></div>
+		</section>
+	</div>
+
 	<script src="../../JS/Admin/adminAuth.js"></script>
 	<script src="../../JS/Admin/login.js"></script>
 </body>
