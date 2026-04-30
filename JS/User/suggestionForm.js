@@ -87,6 +87,19 @@ function inferSentiment(text) {
 	return "Neutral";
 }
 
+function normalizeImpactLevel(value) {
+	const level = String(value || "medium").trim().toLowerCase();
+	if (level === "high") {
+		return "high";
+	}
+
+	if (level === "low") {
+		return "low";
+	}
+
+	return "medium";
+}
+
 function buildPublicFeedEntry(text, category) {
 	return {
 		time: "Just now",
@@ -258,7 +271,7 @@ if (suggestionForm && suggestionInput) {
 	suggestionForm.addEventListener("submit", (event) => {
 		event.preventDefault();
 		const suggestionText = suggestionInput.value.trim();
-		const impactLevel = impactLevelInput?.value || "medium";
+			const impactLevel = normalizeImpactLevel(impactLevelInput?.value);
 		const locationTag = locationTagInput?.value || "General";
 		const suggestedSolution = suggestedSolutionInput?.value.trim() || "";
 		const trackingId = createTrackingId();

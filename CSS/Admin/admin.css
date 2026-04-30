@@ -835,12 +835,16 @@ a.admin-nav-item {
 
 .admin-link-input {
 	width: 100%;
+	min-width: 0;
 	border: none;
 	background: transparent;
 	font: inherit;
 	font-weight: 800;
 	color: #0f2d40;
 	outline: none;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .admin-link-actions {
@@ -1148,6 +1152,23 @@ a.admin-nav-item {
 .admin-placeholder-copy {
 	color: #60798b;
 	line-height: 1.6;
+}
+
+.admin-feed-empty,
+.admin-trend-empty,
+.admin-category-empty {
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-start;
+	min-height: 92px;
+	padding: 14px 16px;
+	border: 1px dashed #c4dbea;
+	border-radius: 16px;
+	background: rgba(255, 255, 255, 0.78);
+	color: #5f7890;
+	font-weight: 700;
+	text-align: left;
+	line-height: 1.45;
 }
 
 .admin-inbox-header {
@@ -1522,11 +1543,21 @@ a.admin-nav-item {
 	font-weight: 700;
 	color: #102434;
 	word-break: break-word;
+	overflow-wrap: anywhere;
+	line-height: 1.25;
 }
 
 .admin-preview-link span {
 	color: #2d61d8;
-	word-break: break-all;
+	word-break: break-word;
+	overflow-wrap: anywhere;
+}
+
+.admin-preview-copy-list span {
+	display: block;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+	line-height: 1.25;
 }
 
 .admin-preview-note {

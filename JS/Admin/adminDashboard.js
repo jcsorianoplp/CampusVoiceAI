@@ -13,6 +13,20 @@ const dashboardTotalSuggestions = document.getElementById("dashboardTotalSuggest
 const dashboardTopCategory = document.getElementById("dashboardTopCategory");
 const dashboardResponseRate = document.getElementById("dashboardResponseRate");
 const dashboardAiAccuracy = document.getElementById("dashboardAiAccuracy");
+const dashboardTopCategoryCount = document.getElementById("dashboardTopCategoryCount");
+const dashboardResponseNote = document.getElementById("dashboardResponseNote");
+const dashboardAiAccuracyNote = document.getElementById("dashboardAiAccuracyNote");
+const dashboardOpenCount = document.getElementById("dashboardOpenCount");
+const dashboardProgressCount = document.getElementById("dashboardProgressCount");
+const dashboardResolvedCount = document.getElementById("dashboardResolvedCount");
+const dashboardNeedsAttentionValue = document.getElementById("dashboardNeedsAttentionValue");
+const dashboardNeedsAttentionNote = document.getElementById("dashboardNeedsAttentionNote");
+const dashboardHotCategoryValue = document.getElementById("dashboardHotCategoryValue");
+const dashboardHotCategoryNote = document.getElementById("dashboardHotCategoryNote");
+const dashboardFollowUpValue = document.getElementById("dashboardFollowUpValue");
+const dashboardFollowUpNote = document.getElementById("dashboardFollowUpNote");
+const dashboardOrganizationName = document.getElementById("dashboardOrganizationName");
+const dashboardOrganizationRole = document.getElementById("dashboardOrganizationRole");
 const suggestionFormPath = "SuggestionForm.html";
 
 const previewAccentThemes = {
@@ -49,23 +63,28 @@ function buildSuggestionFormLink(ref) {
 	return `${suggestionFormPath}?ref=${encodeURIComponent(ref || createRandomSlug())}`;
 }
 
+function buildDisplayLink(slug) {
+	return `campusvoice.ai/${String(slug || "").trim()}`;
+}
+
 function openSuggestionFormInApp(slug) {
 	window.location.href = `../User/${buildSuggestionFormLink(slug)}`;
 }
 
 function setGeneratedLink(slug, shouldPersist) {
 	const suggestionLink = buildSuggestionFormLink(slug);
+	const displayLink = buildDisplayLink(slug);
 
 	if (generatedSlug) {
-		generatedSlug.value = suggestionLink;
+		generatedSlug.value = String(slug || "").trim();
 	}
 
 	if (previewSlug) {
-		previewSlug.textContent = suggestionLink;
+		previewSlug.textContent = displayLink;
 	}
 
 	if (previewSlugMirror) {
-		previewSlugMirror.textContent = `campusvoice.ai/${suggestionLink}`;
+		previewSlugMirror.textContent = displayLink;
 	}
 
 	if (shouldPersist && window.CampusVoiceAdminState) {
@@ -177,15 +196,25 @@ function renderDashboardStats(state) {
 
 	const totals = getCategoryTotals(state.categories, state.suggestions);
 	const topCategory = totals[0];
+	const openCount = state.suggestions.filter((suggestion) => suggestion.status === "open").length;
+	const progressCount = state.suggestions.filter((suggestion) => suggestion.status === "progress").length;
+	const resolvedCount = state.suggestions.filter((suggestion) => suggestion.status === "resolved").length;
 
 	if (dashboardTopCategory) {
 		dashboardTopCategory.textContent = topCategory ? topCategory.name.replace(/^Campus\s+/i, "") : "No data";
 	}
 
+	if (dashboardTopCategoryCount) {
+		dashboardTopCategoryCount.textContent = topCategory ? `${topCategory.volume} suggestions` : "0 suggestions";
+	}
+
 	if (dashboardResponseRate) {
-		const resolvedCount = state.suggestions.filter((suggestion) => suggestion.status === "resolved").length;
 		const responseRate = state.suggestions.length ? Math.round((resolvedCount / state.suggestions.length) * 100) : 0;
 		dashboardResponseRate.textContent = `${responseRate}%`;
+	}
+
+	if (dashboardResponseNote) {
+		dashboardResponseNote.textContent = state.suggestions.length ? `${resolvedCount} resolved of ${state.suggestions.length}` : "No suggestions yet";
 	}
 
 	if (dashboardAiAccuracy) {
@@ -194,19 +223,67 @@ function renderDashboardStats(state) {
 			: 0;
 		dashboardAiAccuracy.textContent = `${averageConfidence}%`;
 	}
+
+	if (dashboardAiAccuracyNote) {
+		dashboardAiAccuracyNote.textContent = state.categories.length ? "Category matching" : "No categories yet";
+	}
+
+	if (dashboardOpenCount) {
+		dashboardOpenCount.textContent = `Open: ${openCount}`;
+	}
+
+	if (dashboardProgressCount) {
+		dashboardProgressCount.textContent = `In Progress: ${progressCount}`;
+	}
+
+	if (dashboardResolvedCount) {
+		dashboardResolvedCount.textContent = `Resolved: ${resolvedCount}`;
+	}
+
+	if (dashboardNeedsAttentionValue) {
+		dashboardNeedsAttentionValue.textContent = `${openCount} open`;
+	}
+
+	if (dashboardNeedsAttentionNote) {
+		dashboardNeedsAttentionNote.textContent = openCount ? "Open items waiting for follow-up" : "No open items yet";
+	}
+
+	if (dashboardHotCategoryValue) {
+		dashboardHotCategoryValue.textContent = topCategory ? topCategory.name.replace(/^Campus\s+/i, "") : "No data";
+	}
+
+	if (dashboardHotCategoryNote) {
+		dashboardHotCategoryNote.textContent = topCategory ? `${topCategory.volume} suggestions in the lead` : "No category activity yet";
+	}
+
+	if (dashboardFollowUpValue) {
+		dashboardFollowUpValue.textContent = `${dashboardResponseRate ? dashboardResponseRate.textContent : "0%"} resolved`;
+	}
+
+	if (dashboardFollowUpNote) {
+		dashboardFollowUpNote.textContent = state.suggestions.length ? "Resolution pace from current data" : "No suggestions yet";
+	}
 }
 
 function syncFromState(state) {
 	if (generatedSlug) {
-		generatedSlug.value = state.generatedSlug;
+		generatedSlug.value = String(state.generatedSlug || "").trim();
 	}
 
 	if (previewSlug) {
-		previewSlug.textContent = state.generatedSlug;
+		previewSlug.textContent = buildDisplayLink(state.generatedSlug);
 	}
 
 	if (previewSlugMirror) {
-		previewSlugMirror.textContent = `campusvoice.ai/${buildSuggestionFormLink(state.generatedSlug)}`;
+		previewSlugMirror.textContent = buildDisplayLink(state.generatedSlug);
+	}
+
+	if (dashboardOrganizationName) {
+		dashboardOrganizationName.textContent = state.organizationName || "Computer Society";
+	}
+
+	if (dashboardOrganizationRole) {
+		dashboardOrganizationRole.textContent = state.organizationName ? `${state.organizationName} • Organization Admin` : "Campus Voice AI";
 	}
 
 	setPreviewAccent(state.previewAccent || "ocean", false);

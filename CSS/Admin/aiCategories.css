@@ -315,6 +315,7 @@
 
 #aiReviewQueueCard {
 	grid-column: 1;
+	align-content: start;
 }
 
 #aiPublicMapCard {

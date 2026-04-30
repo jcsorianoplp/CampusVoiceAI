@@ -89,6 +89,19 @@ function statusLabelFromStatus(status) {
 	return "Open";
 }
 
+function normalizeImpactLevel(value) {
+	const level = String(value || "medium").trim().toLowerCase();
+	if (level === "high") {
+		return "high";
+	}
+
+	if (level === "low") {
+		return "low";
+	}
+
+	return "medium";
+}
+
 function splitKeywords(keywords) {
 	if (!Array.isArray(keywords)) {
 		return [];
@@ -651,7 +664,7 @@ async function syncSuggestions(connection, orgId, categoriesByName, suggestions 
 		) / 100;
 		const status = String(suggestion.status || "open").toLowerCase();
 		const sentiment = String(suggestion.sentiment || "Neutral");
-		const impactLevel = String(suggestion.impactLevel || "medium").toLowerCase();
+		const impactLevel = normalizeImpactLevel(suggestion.impactLevel || "medium");
 		const location = String(suggestion.location || "").trim();
 		const suggestedSolution = String(suggestion.suggestedSolution || "").trim();
 		const text = String(suggestion.text || "").trim();

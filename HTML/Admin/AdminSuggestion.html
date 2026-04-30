@@ -35,8 +35,8 @@
 
 			<div class="admin-sidebar-card">
 				<div class="admin-sidebar-card-label">Active Organization</div>
-				<div class="admin-sidebar-card-value">Computer Society</div>
-				<div class="admin-sidebar-card-note">Campus Voice AI</div>
+				<div class="admin-sidebar-card-value" id="suggestionOrganizationName">Loading...</div>
+				<div class="admin-sidebar-card-note" id="suggestionOrganizationRole">Campus Voice AI</div>
 			</div>
 		</aside>
 
@@ -71,9 +71,9 @@
 						<p>Search, filter, and review anonymous submissions from the active organization link.</p>
 					</div>
 					<div class="admin-inbox-meta">
-						<span class="admin-meta-pill" id="suggestionTotalCount">124 total</span>
-						<span class="admin-meta-pill" id="suggestionOpenCount">38 open</span>
-						<span class="admin-meta-pill" id="suggestionResolvedCount">64 resolved</span>
+						<span class="admin-meta-pill" id="suggestionTotalCount">0 total</span>
+						<span class="admin-meta-pill" id="suggestionOpenCount">0 open</span>
+						<span class="admin-meta-pill" id="suggestionResolvedCount">0 resolved</span>
 					</div>
 				</section>
 
@@ -85,12 +85,6 @@
 					<div class="admin-toolbar-actions">
 						<select class="admin-filter" id="categoryFilter" aria-label="Filter by category">
 							<option value="all">All Categories</option>
-							<option value="Classroom">Classroom</option>
-							<option value="Campus Facilities">Campus Facilities</option>
-							<option value="Academic Services">Academic Services</option>
-							<option value="Student Life">Student Life</option>
-							<option value="Admin Process">Admin Process</option>
-							<option value="Campus Safety">Campus Safety</option>
 						</select>
 						<select class="admin-filter" id="statusFilter" aria-label="Filter by status">
 							<option value="all">All Statuses</option>
@@ -116,80 +110,8 @@
 				</section>
 
 				<section class="admin-inbox-board is-list" id="suggestionBoard" aria-label="Suggestion inbox">
-					<article class="admin-suggestion-card" data-category="Campus Facilities" data-status="open" data-sentiment="neutral" data-text="library air conditioning weak afternoon">
-						<div class="admin-suggestion-top">
-							<span>2 min ago</span>
-							<span class="admin-suggestion-category">#Campus Facilities</span>
-						</div>
-						<p>The library air-conditioning is too weak in the afternoon.</p>
-						<div class="admin-suggestion-bottom">
-							<span class="status-pill status-pill--open">Open</span>
-							<span class="admin-suggestion-sentiment admin-suggestion-sentiment--neutral">Neutral</span>
-						</div>
-					</article>
-
-					<article class="admin-suggestion-card" data-category="Student Life" data-status="progress" data-sentiment="positive" data-text="more student org activities midterms finals week">
-						<div class="admin-suggestion-top">
-							<span>15 min ago</span>
-							<span class="admin-suggestion-category">#Student Life</span>
-						</div>
-						<p>Can we have more student org activities between midterms and finals week?</p>
-						<div class="admin-suggestion-bottom">
-							<span class="status-pill status-pill--progress">In Progress</span>
-							<span class="admin-suggestion-sentiment admin-suggestion-sentiment--positive">Positive</span>
-						</div>
-					</article>
-
-					<article class="admin-suggestion-card" data-category="Admin Process" data-status="resolved" data-sentiment="neutral" data-text="enrollment steps confusing clear checklist freshmen">
-						<div class="admin-suggestion-top">
-							<span>1 hour ago</span>
-							<span class="admin-suggestion-category">#Admin Process</span>
-						</div>
-						<p>Enrollment steps were a bit confusing. A clear checklist would help freshmen.</p>
-						<div class="admin-suggestion-bottom">
-							<span class="status-pill status-pill--done">Resolved</span>
-							<span class="admin-suggestion-sentiment admin-suggestion-sentiment--neutral">Neutral</span>
-						</div>
-					</article>
-
-					<article class="admin-suggestion-card" data-category="Campus Safety" data-status="open" data-sentiment="negative" data-text="main gate overcrowded after last class crowd flow">
-						<div class="admin-suggestion-top">
-							<span>3 hours ago</span>
-							<span class="admin-suggestion-category">#Campus Safety</span>
-						</div>
-						<p>The main gate gets overcrowded after the last class. Can we improve crowd flow?</p>
-						<div class="admin-suggestion-bottom">
-							<span class="status-pill status-pill--open">Open</span>
-							<span class="admin-suggestion-sentiment admin-suggestion-sentiment--negative">Negative</span>
-						</div>
-					</article>
-
-					<article class="admin-suggestion-card" data-category="Academic Services" data-status="progress" data-sentiment="neutral" data-text="grading feedback release faster">
-						<div class="admin-suggestion-top">
-							<span>5 hours ago</span>
-							<span class="admin-suggestion-category">#Academic Services</span>
-						</div>
-						<p>Could grading feedback be released a little faster after submissions?</p>
-						<div class="admin-suggestion-bottom">
-							<span class="status-pill status-pill--progress">In Progress</span>
-							<span class="admin-suggestion-sentiment admin-suggestion-sentiment--neutral">Neutral</span>
-						</div>
-					</article>
-
-					<article class="admin-suggestion-card" data-category="Classroom" data-status="resolved" data-sentiment="positive" data-text="projector classroom better lighting">
-						<div class="admin-suggestion-top">
-							<span>Yesterday</span>
-							<span class="admin-suggestion-category">#Classroom</span>
-						</div>
-						<p>The projector in room 204 needs maintenance and better lighting would help.</p>
-						<div class="admin-suggestion-bottom">
-							<span class="status-pill status-pill--done">Resolved</span>
-							<span class="admin-suggestion-sentiment admin-suggestion-sentiment--positive">Positive</span>
-						</div>
-					</article>
-
 					<div class="admin-empty-state" id="suggestionEmptyState" hidden>
-						No suggestions match the current search or filters.
+						No suggestions yet. New submissions will appear here.
 					</div>
 				</section>
 			</section>
