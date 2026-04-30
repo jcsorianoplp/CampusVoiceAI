@@ -7,6 +7,7 @@ const impactLevelInput = document.getElementById("impactLevel");
 const locationTagInput = document.getElementById("locationTag");
 const suggestedSolutionInput = document.getElementById("suggestedSolution");
 const submitFeedback = document.getElementById("submitFeedback");
+const backToAdminButton = document.getElementById("backToAdminButton");
 const publicTotalValue = document.getElementById("publicTotalValue");
 const publicTopCategoryValue = document.getElementById("publicTopCategoryValue");
 const publicResolutionValue = document.getElementById("publicResolutionValue");
@@ -267,11 +268,17 @@ if (suggestionInput && charCount) {
 	updateCount();
 }
 
+if (backToAdminButton) {
+	backToAdminButton.addEventListener("click", () => {
+		window.location.href = "../Admin/AdminDashboard.html";
+	});
+}
+
 if (suggestionForm && suggestionInput) {
-	suggestionForm.addEventListener("submit", (event) => {
+	suggestionForm.addEventListener("submit", async (event) => {
 		event.preventDefault();
 		const suggestionText = suggestionInput.value.trim();
-			const impactLevel = normalizeImpactLevel(impactLevelInput?.value);
+		const impactLevel = normalizeImpactLevel(impactLevelInput?.value);
 		const locationTag = locationTagInput?.value || "General";
 		const suggestedSolution = suggestedSolutionInput?.value.trim() || "";
 		const trackingId = createTrackingId();
@@ -279,6 +286,10 @@ if (suggestionForm && suggestionInput) {
 			suggestionInput.focus();
 			return;
 		}
+
+			if (submitFeedback) {
+				submitFeedback.textContent = "Saving suggestion to the database...";
+			}
 
 		if (window.CampusVoiceAdminState) {
 			const category = inferCategory(suggestionText);
@@ -303,6 +314,13 @@ if (suggestionForm && suggestionInput) {
 				state.lastUpdated = `Submitted: ${new Date().toLocaleString()}`;
 				return state;
 			}, "public-suggestion-submit");
+			const saveResult = await window.CampusVoiceAdminState.flushPendingBackendSave?.();
+			if (!saveResult?.ok) {
+				if (submitFeedback) {
+					submitFeedback.textContent = `Database save failed: ${saveResult?.message || "Unknown error"}`;
+				}
+				return;
+			}
 		}
 
 		suggestionInput.value = "";
@@ -319,7 +337,7 @@ if (suggestionForm && suggestionInput) {
 			charCount.textContent = "0";
 		}
 		if (submitFeedback) {
-			submitFeedback.textContent = `Submitted successfully. Tracking ID: ${trackingId}`;
+			submitFeedback.textContent = `Saved to database successfully. Tracking ID: ${trackingId}`;
 		}
 
 		activateTab("public");

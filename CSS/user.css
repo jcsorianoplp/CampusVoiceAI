@@ -263,6 +263,34 @@ body.suggestion-wireframe-page {
 	color: #2d6ed8;
 }
 
+.form-action-row {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 10px;
+	margin-top: -2px;
+}
+
+.admin-switch-btn {
+	border: 1px solid #8ccbe2;
+	border-radius: 12px;
+	padding: 10px 14px;
+	font: inherit;
+	font-size: 0.84rem;
+	font-weight: 800;
+	letter-spacing: 0.02em;
+	color: #1f5b77;
+	background: linear-gradient(180deg, #f8fdff, #e8f6fd);
+	cursor: pointer;
+	transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.admin-switch-btn:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 10px 16px rgba(41, 84, 191, 0.1);
+	background: linear-gradient(180deg, #ffffff, #def0fa);
+}
+
 .wireframe-panel--form textarea {
 	min-height: 204px;
 	border-radius: 13px;

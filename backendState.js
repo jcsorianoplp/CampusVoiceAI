@@ -747,15 +747,42 @@ async function saveAdminState(pool, payload = {}) {
 	}
 
 	const state = payload.state || {};
+	const source = String(payload.source || "");
+	const isSuggestionSubmit = source === "public-suggestion-submit";
+	const isCategoryChange = source.startsWith("ai-");
+	const isPublicSettingsChange = source === "public-note" || source === "public-stats-range" || source === "public-stats-refresh" || source === "public-stats-publish";
+	const isDashboardLinkChange = source === "dashboard-link" || source === "dashboard-accent";
+	const isReportChange = source.startsWith("reports-");
 	const connection = await pool.getConnection();
 
 	try {
 		await connection.beginTransaction();
-		await syncAppSettings(connection, organization, state);
-		await syncAiRules(connection, organization.id, state.aiRules || {});
-		const categoriesByName = await syncCategories(connection, organization.id, state.categories || []);
-		await syncSuggestions(connection, organization.id, categoriesByName, state.suggestions || []);
-		if (String(payload.source || "").startsWith("reports-")) {
+		if (isSuggestionSubmit) {
+			const categoriesByName = new Map();
+			await syncSuggestions(connection, organization.id, categoriesByName, state.suggestions || []);
+		} else {
+			if (isPublicSettingsChange || isDashboardLinkChange || source === "local") {
+				await syncAppSettings(connection, organization, state);
+			}
+
+			if (isCategoryChange || source === "local") {
+				await syncAiRules(connection, organization.id, state.aiRules || {});
+				const categoriesByName = await syncCategories(connection, organization.id, state.categories || []);
+				await syncSuggestions(connection, organization.id, categoriesByName, state.suggestions || []);
+			} else {
+				const [categoryRows] = await connection.execute(
+					`SELECT id, name, priority, route_team, sla_target, confidence_threshold, is_active
+					 FROM categories
+					 WHERE org_id = ? AND is_active = 1
+					 ORDER BY id ASC`,
+					[organization.id]
+				);
+				const categoriesByName = new Map(categoryRows.map((row) => [row.name, { id: row.id, name: row.name }]));
+				await syncSuggestions(connection, organization.id, categoriesByName, state.suggestions || []);
+			}
+		}
+
+		if (isReportChange) {
 			await syncReportHistory(connection, organization.id, Number(payload.adminId || 0), state.reportHistory || []);
 		}
 		await connection.commit();

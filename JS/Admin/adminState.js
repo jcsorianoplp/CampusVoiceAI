@@ -31,6 +31,7 @@
 	};
 
 	let backendHydrationToken = 0;
+	let pendingBackendSave = Promise.resolve({ ok: true, message: "No pending save." });
 
 	function getStateContext() {
 		const orgId = Number(window.sessionStorage.getItem("campusvoice-admin-org-id") || "0");
@@ -81,18 +82,21 @@
 
 	function persistToBackend(state, source) {
 		if (!window.campusVoiceDesktop?.saveAppState) {
-			return;
+			return Promise.resolve({ ok: false, message: "Database save is unavailable right now." });
 		}
 
 		const context = getStateContext();
-		window.campusVoiceDesktop.saveAppState({
+		pendingBackendSave = window.campusVoiceDesktop.saveAppState({
 			...context,
 			source: source || "local",
 			state: clone(state)
 		})
 			.then((response) => {
 				if (!response?.ok || !response.state) {
-					return;
+					return {
+						ok: false,
+						message: response?.message || "Unable to save application state."
+					};
 				}
 
 				const nextState = mergeDeep(state, response.state);
@@ -103,8 +107,18 @@
 						state: clone(nextState)
 					}
 				}));
+				return {
+					ok: true,
+					message: response.message || "Saved successfully.",
+					state: nextState
+				};
 			})
-			.catch(() => {});
+			.catch((error) => ({
+				ok: false,
+				message: error instanceof Error ? error.message : "Unable to save application state."
+			}));
+
+		return pendingBackendSave;
 	}
 
 	function hydrateFromBackend() {
@@ -167,6 +181,10 @@
 		return nextState;
 	}
 
+	function flushPendingBackendSave() {
+		return pendingBackendSave;
+	}
+
 	function updateState(updater, source) {
 		const currentState = loadState();
 		const nextState = typeof updater === "function" ? updater(clone(currentState)) : mergeDeep(currentState, updater);
@@ -205,6 +223,7 @@
 		setState: saveState,
 		updateState,
 		subscribe,
+		flushPendingBackendSave,
 		reloadFromBackend: hydrateFromBackend
 	};
 })();
