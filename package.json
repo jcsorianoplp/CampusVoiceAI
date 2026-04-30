@@ -28,6 +28,7 @@
       "output": "release"
     },
     "files": [
+      "backendState.js",
       "HTML/**/*",
       "CSS/**/*",
       "JS/**/*",

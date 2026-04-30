@@ -12,137 +12,10 @@
 			keywordBoost: true,
 			testInput: ""
 		},
-		categories: [
-			{
-				name: "Campus Facilities",
-				priority: "high",
-				route: "Facilities Team",
-				sla: "24h",
-				confidence: 92,
-				volume: 32,
-				keywords: ["aircon", "projector", "lights"]
-			},
-			{
-				name: "Student Life",
-				priority: "medium",
-				route: "Student Affairs",
-				sla: "24h",
-				confidence: 87,
-				volume: 21,
-				keywords: ["events", "clubs", "canteen"]
-			},
-			{
-				name: "Academic Services",
-				priority: "medium",
-				route: "Academic Office",
-				sla: "48h",
-				confidence: 84,
-				volume: 18,
-				keywords: ["grading", "scheduling", "advising"]
-			},
-			{
-				name: "Campus Safety",
-				priority: "high",
-				route: "Campus Security",
-				sla: "12h",
-				confidence: 79,
-				volume: 13,
-				keywords: ["gate", "crowd", "security"]
-			}
-		],
-		reviewQueue: [
-			{
-				id: "rv-1",
-				text: "Main gate is too crowded after 5 PM and feels unsafe.",
-				predicted: "Student Life",
-				confidence: 61
-			},
-			{
-				id: "rv-2",
-				text: "Need more quiet zones in the library for group projects.",
-				predicted: "Academic Services",
-				confidence: 66
-			},
-			{
-				id: "rv-3",
-				text: "Queue in canteen building B gets too long at lunch.",
-				predicted: "Campus Facilities",
-				confidence: 64
-			}
-		],
-		suggestions: [
-			{
-				time: "2 min ago",
-				category: "Campus Facilities",
-				status: "open",
-				statusLabel: "Open",
-				sentiment: "Neutral",
-				text: "The library air-conditioning is too weak in the afternoon."
-			},
-			{
-				time: "15 min ago",
-				category: "Student Life",
-				status: "progress",
-				statusLabel: "In Progress",
-				sentiment: "Positive",
-				text: "Can we have more student org activities between midterms and finals week?"
-			},
-			{
-				time: "1 hour ago",
-				category: "Admin Process",
-				status: "resolved",
-				statusLabel: "Resolved",
-				sentiment: "Neutral",
-				text: "Enrollment steps were a bit confusing. A clear checklist would help freshmen."
-			},
-			{
-				time: "3 hours ago",
-				category: "Campus Safety",
-				status: "open",
-				statusLabel: "Open",
-				sentiment: "Negative",
-				text: "The main gate gets overcrowded after the last class. Can we improve crowd flow?"
-			},
-			{
-				time: "5 hours ago",
-				category: "Academic Services",
-				status: "progress",
-				statusLabel: "In Progress",
-				sentiment: "Neutral",
-				text: "Could grading feedback be released a little faster after submissions?"
-			},
-			{
-				time: "Yesterday",
-				category: "Classroom",
-				status: "resolved",
-				statusLabel: "Resolved",
-				sentiment: "Positive",
-				text: "The projector in room 204 needs maintenance and better lighting would help."
-			}
-		],
-		publicFeed: [
-			{
-				time: "Today",
-				category: "Campus Facilities",
-				status: "progress",
-				statusLabel: "In Progress",
-				text: "Library airflow concern moved to In Progress and posted in public status."
-			},
-			{
-				time: "Yesterday",
-				category: "Student Life",
-				status: "open",
-				statusLabel: "Acknowledged",
-				text: "Activity-week suggestion acknowledged and published in summary update."
-			},
-			{
-				time: "2 days ago",
-				category: "Classroom",
-				status: "done",
-				statusLabel: "Resolved",
-				text: "Projector issue marked resolved and reflected on the public dashboard."
-			}
-		],
+		categories: [],
+		reviewQueue: [],
+		suggestions: [],
+		publicFeed: [],
 		reportConfig: {
 			title: "Weekly Campus Voice Report",
 			range: "30",
@@ -151,21 +24,26 @@
 			includeSentiment: true,
 			includeCategories: true
 		},
-		reportHistory: [
-			{
-				id: "rp-1",
-				title: "Weekly Campus Voice Report",
-				range: "30",
-				audience: "Leadership",
-				createdAt: "April 20, 2026 9:20 AM",
-				suggestions: 6,
-				resolvedRate: "33%"
-			}
-		],
+		reportHistory: [],
 		publicNote: "",
 		publicRange: "7",
 		lastUpdated: null
 	};
+
+	let backendHydrationToken = 0;
+
+	function getStateContext() {
+		const orgId = Number(window.sessionStorage.getItem("campusvoice-admin-org-id") || "0");
+		const adminId = Number(window.sessionStorage.getItem("campusvoice-admin-id") || "0");
+		const url = new URL(window.location.href);
+		const ref = String(url.searchParams.get("ref") || "").trim();
+
+		return {
+			orgId: Number.isFinite(orgId) && orgId > 0 ? orgId : 0,
+			adminId: Number.isFinite(adminId) && adminId > 0 ? adminId : 0,
+			ref
+		};
+	}
 
 	function clone(value) {
 		if (typeof window.structuredClone === "function") {
@@ -201,6 +79,68 @@
 		return result;
 	}
 
+	function persistToBackend(state, source) {
+		if (!window.campusVoiceDesktop?.saveAppState) {
+			return;
+		}
+
+		const context = getStateContext();
+		window.campusVoiceDesktop.saveAppState({
+			...context,
+			source: source || "local",
+			state: clone(state)
+		})
+			.then((response) => {
+				if (!response?.ok || !response.state) {
+					return;
+				}
+
+				const nextState = mergeDeep(state, response.state);
+				window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+				window.dispatchEvent(new CustomEvent(CHANGE_EVENT, {
+					detail: {
+						source: `${source || "local"}-saved`,
+						state: clone(nextState)
+					}
+				}));
+			})
+			.catch(() => {});
+	}
+
+	function hydrateFromBackend() {
+		if (!window.campusVoiceDesktop?.loadAppState) {
+			return;
+		}
+
+		const context = getStateContext();
+		const token = ++backendHydrationToken;
+
+		window.campusVoiceDesktop.loadAppState(context)
+			.then((response) => {
+				if (token !== backendHydrationToken || !response?.ok || !response.state) {
+					return;
+				}
+
+				let hydratedState = clone(response.state);
+				try {
+					const rawState = window.sessionStorage.getItem(STORAGE_KEY);
+					if (rawState) {
+						hydratedState = mergeDeep(response.state, JSON.parse(rawState));
+					}
+				} catch (error) {
+					hydratedState = clone(response.state);
+				}
+				window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(hydratedState));
+				window.dispatchEvent(new CustomEvent(CHANGE_EVENT, {
+					detail: {
+						source: "backend-load",
+						state: clone(hydratedState)
+					}
+				}));
+			})
+			.catch(() => {});
+	}
+
 	function loadState() {
 		try {
 			const rawState = window.sessionStorage.getItem(STORAGE_KEY);
@@ -223,6 +163,7 @@
 				state: clone(nextState)
 			}
 		}));
+		persistToBackend(nextState, source);
 		return nextState;
 	}
 
@@ -251,6 +192,7 @@
 		});
 
 		listener(loadState(), { source: "init" });
+		hydrateFromBackend();
 
 		return () => {
 			window.removeEventListener(CHANGE_EVENT, handleChange);
@@ -262,6 +204,7 @@
 		getState: loadState,
 		setState: saveState,
 		updateState,
-		subscribe
+		subscribe,
+		reloadFromBackend: hydrateFromBackend
 	};
 })();

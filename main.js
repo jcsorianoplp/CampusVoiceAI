@@ -5,6 +5,7 @@ const path = require("path");
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 const { pool, testConnection } = require("./db");
+const { loadAdminState, saveAdminState, resolveOrganizationContext } = require("./backendState");
 
 function createMailTransport() {
 	const host = process.env.CV_SMTP_HOST;
@@ -75,6 +76,50 @@ ipcMain.handle("db:ping", async () => {
 		return {
 			ok: false,
 			message: error instanceof Error ? error.message : "Unable to connect to the database."
+		};
+	}
+});
+
+ipcMain.handle("org:resolve", async (_event, payload) => {
+	try {
+		const organization = await resolveOrganizationContext(pool, payload);
+		if (!organization) {
+			return {
+				ok: false,
+				message: "Unable to resolve the requested organization."
+			};
+		}
+
+		return {
+			ok: true,
+			organization
+		};
+	} catch (error) {
+		return {
+			ok: false,
+			message: error instanceof Error ? error.message : "Unable to resolve the requested organization."
+		};
+	}
+});
+
+ipcMain.handle("app:state:load", async (_event, payload) => {
+	try {
+		return await loadAdminState(pool, payload);
+	} catch (error) {
+		return {
+			ok: false,
+			message: error instanceof Error ? error.message : "Unable to load application state."
+		};
+	}
+});
+
+ipcMain.handle("app:state:save", async (_event, payload) => {
+	try {
+		return await saveAdminState(pool, payload);
+	} catch (error) {
+		return {
+			ok: false,
+			message: error instanceof Error ? error.message : "Unable to save application state."
 		};
 	}
 });
@@ -181,12 +226,12 @@ ipcMain.handle("auth:request-password-reset", async (_event, payload) => {
 		const expiresMinutes = Number(process.env.CV_RESET_CODE_MINUTES || 15);
 
 		await pool.execute(
-			"DELETE FROM reset_password WHERE admin_id = ? AND used_at IS NULL",
+			"DELETE FROM password_resets WHERE admin_id = ? AND used_at IS NULL",
 			[admin.id]
 		);
 
 		await pool.execute(
-			`INSERT INTO reset_password (admin_id, code_hash, expires_at)
+			`INSERT INTO password_resets (admin_id, code_hash, expires_at)
 			 VALUES (?, ?, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL ? MINUTE))`,
 			[admin.id, hashResetCode(resetCode), expiresMinutes]
 		);
@@ -256,7 +301,7 @@ ipcMain.handle("auth:complete-password-reset", async (_event, payload) => {
 		const admin = adminRows[0];
 		const [resetRows] = await pool.execute(
 			`SELECT id, code_hash, expires_at
-			 FROM reset_password
+			 FROM password_resets
 			 WHERE admin_id = ? AND used_at IS NULL
 			 ORDER BY created_at DESC
 			 LIMIT 1`,
@@ -291,7 +336,7 @@ ipcMain.handle("auth:complete-password-reset", async (_event, payload) => {
 		);
 
 		await pool.execute(
-			"UPDATE reset_password SET used_at = CURRENT_TIMESTAMP WHERE id = ?",
+			"UPDATE password_resets SET used_at = CURRENT_TIMESTAMP WHERE id = ?",
 			[resetRow.id]
 		);
 

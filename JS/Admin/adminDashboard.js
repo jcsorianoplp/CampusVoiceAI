@@ -134,6 +134,11 @@ function renderOverviewSnapshot(state) {
 	}
 
 	const recentRecords = state.suggestions.slice(0, 3);
+	if (!recentRecords.length) {
+		overviewSnapshotList.innerHTML = '<div class="admin-feed-empty">No suggestions yet. New submissions will appear here.</div>';
+		return;
+	}
+
 	overviewSnapshotList.innerHTML = recentRecords
 		.map((record) => {
 			const sentiment = record.sentiment || "Neutral";

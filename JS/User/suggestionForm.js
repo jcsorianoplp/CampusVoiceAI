@@ -13,6 +13,22 @@ const publicResolutionValue = document.getElementById("publicResolutionValue");
 const publicTrendChart = document.getElementById("publicTrendChart");
 const publicActivityFeed = document.getElementById("publicActivityFeed");
 
+const brandTextNodes = Array.from(document.querySelectorAll(".wireframe-brand-text"));
+const headlineStrongNodes = Array.from(document.querySelectorAll(".wireframe-headline strong"));
+
+function syncOrganizationCopy(state) {
+	const organizationName = String(state?.organizationName || "Computer Society").trim() || "Computer Society";
+	const headlineParts = organizationName.toUpperCase().split(/\s+/).filter(Boolean);
+
+	brandTextNodes.forEach((node) => {
+		node.textContent = organizationName;
+	});
+
+	headlineStrongNodes.forEach((node, index) => {
+		node.textContent = headlineParts[index % Math.max(1, headlineParts.length)] || organizationName.toUpperCase();
+	});
+}
+
 let activeTab = tabButtons.find((button) => button.classList.contains("is-active"))?.dataset.tabTarget || tabButtons[0]?.dataset.tabTarget || "suggestions";
 let transitionToken = 0;
 
@@ -299,8 +315,10 @@ if (suggestionForm && suggestionInput) {
 
 if (window.CampusVoiceAdminState) {
 	window.CampusVoiceAdminState.subscribe((state) => {
+		syncOrganizationCopy(state);
 		renderPublicPanel(state);
 	});
 	const initialState = window.CampusVoiceAdminState.getState();
+	syncOrganizationCopy(initialState);
 	renderPublicPanel(initialState);
 }
