@@ -181,6 +181,18 @@
 		return nextState;
 	}
 
+	function setLocalState(state, source) {
+		const nextState = mergeDeep(DEFAULT_STATE, state);
+		window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+		window.dispatchEvent(new CustomEvent(CHANGE_EVENT, {
+			detail: {
+				source: source || "local",
+				state: clone(nextState)
+			}
+		}));
+		return nextState;
+	}
+
 	function flushPendingBackendSave() {
 		return pendingBackendSave;
 	}
@@ -221,6 +233,7 @@
 		defaultState: clone(DEFAULT_STATE),
 		getState: loadState,
 		setState: saveState,
+		setLocalState,
 		updateState,
 		subscribe,
 		flushPendingBackendSave,

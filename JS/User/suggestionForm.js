@@ -62,28 +62,6 @@ function getResponseRate(state) {
 	return Math.round((resolvedCount / total) * 100);
 }
 
-function fitPublicMetricText(element) {
-	if (!element) {
-		return;
-	}
-
-	element.style.fontSize = "";
-	const computed = window.getComputedStyle(element);
-	const baseFontSize = Number.parseFloat(computed.fontSize || "0") || 16;
-	const minFontSize = 11;
-	let fontSize = baseFontSize;
-
-	while (fontSize >= minFontSize) {
-		element.style.fontSize = `${fontSize}px`;
-		if (element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight) {
-			return;
-		}
-		fontSize -= 1;
-	}
-
-	element.style.fontSize = `${minFontSize}px`;
-}
-
 function inferCategory(text) {
 	const lower = String(text || "").toLowerCase();
 	const rules = [
@@ -150,7 +128,6 @@ function renderPublicPanel(state) {
 
 	if (publicTopCategoryValue) {
 		publicTopCategoryValue.textContent = topCategory.replace(/^Campus\s+/i, "");
-		window.requestAnimationFrame(() => fitPublicMetricText(publicTopCategoryValue));
 	}
 
 	if (publicResolutionValue) {

@@ -74,6 +74,10 @@ function formatDateTime(timestamp) {
 }
 
 function statusLabelFromStatus(status) {
+	if (status === "open" || status === "pending") {
+		return "Open";
+	}
+
 	if (status === "progress") {
 		return "In Progress";
 	}
@@ -87,6 +91,28 @@ function statusLabelFromStatus(status) {
 	}
 
 	return "Open";
+}
+
+function normalizeSuggestionStatus(value) {
+	const status = String(value || "open").trim().toLowerCase();
+
+	if (status === "pending") {
+		return "open";
+	}
+
+	if (status === "in progress") {
+		return "progress";
+	}
+
+	if (status === "done") {
+		return "resolved";
+	}
+
+	if (status === "open" || status === "progress" || status === "resolved") {
+		return status;
+	}
+
+	return "open";
 }
 
 function normalizeImpactLevel(value) {
@@ -246,7 +272,7 @@ function buildSuggestions(suggestionRows, categoryMap) {
 		const categoryName = row.category_name || "Uncategorized";
 		const categoryConfidence = categoryMap.get(categoryName)?.confidence || 80;
 		const aiConfidence = normalizePercent(row.ai_confidence, categoryConfidence);
-		const status = row.status || "open";
+		const status = normalizeSuggestionStatus(row.status || "open");
 		const timestamp = row.created_at || row.updated_at || new Date();
 
 		return {
@@ -662,7 +688,7 @@ async function syncSuggestions(connection, orgId, categoriesByName, suggestions 
 			suggestion.aiConfidence ?? suggestion.confidence ?? categoriesByName.get(categoryName)?.confidence ?? 80,
 			80
 		) / 100;
-		const status = String(suggestion.status || "open").toLowerCase();
+		const status = normalizeSuggestionStatus(suggestion.status || "open");
 		const sentiment = String(suggestion.sentiment || "Neutral");
 		const impactLevel = normalizeImpactLevel(suggestion.impactLevel || "medium");
 		const location = String(suggestion.location || "").trim();
@@ -742,7 +768,7 @@ async function saveSuggestionSubmissions(connection, orgId, suggestions = []) {
 			suggestion.aiConfidence ?? suggestion.confidence ?? 80,
 			80
 		) / 100;
-		const status = String(suggestion.status || "open").toLowerCase();
+		const status = normalizeSuggestionStatus(suggestion.status || "open");
 		const sentiment = String(suggestion.sentiment || "Neutral");
 		const impactLevel = normalizeImpactLevel(suggestion.impactLevel || "medium");
 		const location = String(suggestion.location || "").trim();
@@ -791,6 +817,47 @@ async function saveSuggestionSubmissions(connection, orgId, suggestions = []) {
 			]
 		);
 	}
+}
+
+async function updateSuggestionStatus(connection, orgId, suggestionId, status) {
+	const nextStatus = normalizeSuggestionStatus(status);
+	const resolvedAt = nextStatus === "resolved" ? new Date() : null;
+	const numericSuggestionId = Number(suggestionId || 0);
+
+	if (!Number.isFinite(numericSuggestionId) || numericSuggestionId <= 0) {
+		return {
+			ok: false,
+			message: "Missing suggestion identifier."
+		};
+	}
+
+	const existing = await fetchSingleRow(
+		connection,
+		`SELECT id
+		 FROM suggestions
+		 WHERE org_id = ? AND id = ?
+		 LIMIT 1`,
+		[orgId, numericSuggestionId]
+	);
+
+	if (!existing) {
+		return {
+			ok: false,
+			message: "Suggestion not found."
+		};
+	}
+
+	await connection.execute(
+		`UPDATE suggestions
+		 SET status = ?, resolved_at = ?, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = ? AND org_id = ?`,
+		[nextStatus, resolvedAt, numericSuggestionId, orgId]
+	);
+
+	return {
+		ok: true,
+		message: `Suggestion marked ${statusLabelFromStatus(nextStatus).toLowerCase()}.`
+	};
 }
 
 async function syncReportHistory(connection, orgId, adminId, reportHistory = []) {
@@ -889,8 +956,48 @@ async function saveAdminState(pool, payload = {}) {
 	}
 }
 
+async function saveSuggestionStatus(pool, payload = {}) {
+	const organization = await resolveOrganizationContext(pool, payload);
+	if (!organization) {
+		return {
+			ok: false,
+			message: "Unable to resolve the current organization."
+		};
+	}
+
+	const connection = await pool.getConnection();
+	try {
+		await connection.beginTransaction();
+		const updateResult = await updateSuggestionStatus(connection, organization.id, payload.suggestionId, payload.status);
+		if (!updateResult.ok) {
+			await connection.rollback();
+			return updateResult;
+		}
+
+		await connection.commit();
+		const loadedState = await loadAdminState(pool, { orgId: organization.id });
+		if (!loadedState.ok) {
+			return loadedState;
+		}
+
+		return {
+			...loadedState,
+			message: updateResult.message || "Suggestion status updated."
+		};
+	} catch (error) {
+		await connection.rollback();
+		return {
+			ok: false,
+			message: error instanceof Error ? error.message : "Unable to update suggestion status."
+		};
+	} finally {
+		connection.release();
+	}
+}
+
 module.exports = {
 	loadAdminState,
 	saveAdminState,
+	saveSuggestionStatus,
 	resolveOrganizationContext
 };

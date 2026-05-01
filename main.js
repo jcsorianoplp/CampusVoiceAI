@@ -5,7 +5,7 @@ const path = require("path");
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 const { pool, testConnection } = require("./db");
-const { loadAdminState, saveAdminState, resolveOrganizationContext } = require("./backendState");
+const { loadAdminState, saveAdminState, saveSuggestionStatus, resolveOrganizationContext } = require("./backendState");
 
 function createMailTransport() {
 	const host = process.env.CV_SMTP_HOST;
@@ -120,6 +120,17 @@ ipcMain.handle("app:state:save", async (_event, payload) => {
 		return {
 			ok: false,
 			message: error instanceof Error ? error.message : "Unable to save application state."
+		};
+	}
+});
+
+ipcMain.handle("suggestion:update-status", async (_event, payload) => {
+	try {
+		return await saveSuggestionStatus(pool, payload);
+	} catch (error) {
+		return {
+			ok: false,
+			message: error instanceof Error ? error.message : "Unable to update suggestion status."
 		};
 	}
 });

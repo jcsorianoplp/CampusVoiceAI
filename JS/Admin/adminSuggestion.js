@@ -11,7 +11,80 @@ function escapeHtml(value) {
 		.replace(/'/g, "&#39;");
 }
 
+function normalizeSuggestionStatus(value) {
+	const status = normalize(value || "open");
+
+	if (status === "pending") {
+		return "open";
+	}
+
+	if (status === "in progress") {
+		return "progress";
+	}
+
+	if (status === "done") {
+		return "resolved";
+	}
+
+	if (status === "open" || status === "progress" || status === "resolved") {
+		return status;
+	}
+
+	return "open";
+}
+
+function getStatusLabel(status) {
+	if (status === "progress") {
+		return "In Progress";
+	}
+
+	if (status === "resolved") {
+		return "Resolved";
+	}
+
+	return "Pending / Open";
+}
+
+function getStatusBadgeLabel(status) {
+	if (status === "progress") {
+		return "In Progress";
+	}
+
+	if (status === "resolved") {
+		return "Resolved";
+	}
+
+	return "Open";
+}
+
+function formatImpactLevel(value) {
+	const level = normalize(value || "medium");
+	if (level === "high") {
+		return "High";
+	}
+
+	if (level === "low") {
+		return "Low";
+	}
+
+	return "Medium";
+}
+
+function formatConfidence(value) {
+	const numericValue = Number(value);
+	if (!Number.isFinite(numericValue)) {
+		return "0%";
+	}
+
+	return `${Math.max(0, Math.min(100, Math.round(numericValue)))}%`;
+}
+
 let suggestionPageInitialized = false;
+let suggestionIndex = new Map();
+let activeSuggestionId = null;
+let lastFocusedSuggestionCard = null;
+let modalBusy = false;
+let suggestionModalElements = null;
 
 function initAdminSuggestionPage() {
 	if (suggestionPageInitialized) {
@@ -37,17 +110,258 @@ function initAdminSuggestionPage() {
 		return Array.from(suggestionBoard.querySelectorAll(".admin-suggestion-card"));
 	}
 
+	function getSuggestionById(suggestionId) {
+		return suggestionIndex.get(String(suggestionId)) || null;
+	}
+
+	function renderSuggestionModal(suggestion) {
+		if (!suggestionModalElements) {
+			return;
+		}
+
+		const dialog = suggestionModalElements.dialog;
+		const statusButtons = suggestionModalElements.statusButtons;
+		const hasSuggestion = Boolean(suggestion);
+
+		suggestionModalElements.title.textContent = hasSuggestion ? `#${suggestion.category || "Uncategorized"}` : "Suggestion details";
+		suggestionModalElements.subtitle.textContent = hasSuggestion
+			? `${suggestion.trackingId || "No tracking ID"} • ${suggestion.time || suggestion.createdAt || "Just now"}`
+			: "Select a suggestion to review its status and details.";
+
+		suggestionModalElements.statusBadge.className = `status-pill status-pill--${hasSuggestion && normalizeSuggestionStatus(suggestion.status) === "resolved" ? "done" : hasSuggestion ? normalizeSuggestionStatus(suggestion.status) : "open"}`;
+		suggestionModalElements.statusBadge.textContent = hasSuggestion ? getStatusBadgeLabel(normalizeSuggestionStatus(suggestion.status)) : "Open";
+
+		suggestionModalElements.text.textContent = hasSuggestion ? suggestion.text || "No suggestion text available." : "";
+		suggestionModalElements.solution.textContent = hasSuggestion && suggestion.suggestedSolution ? suggestion.suggestedSolution : "No suggested solution provided.";
+		suggestionModalElements.solution.hidden = !hasSuggestion || !suggestion.suggestedSolution;
+
+		suggestionModalElements.metaTime.textContent = hasSuggestion ? `Submitted ${suggestion.createdAt || suggestion.time || "Just now"}` : "";
+		suggestionModalElements.metaLocation.textContent = hasSuggestion ? `Location: ${suggestion.location || "General"}` : "";
+		suggestionModalElements.metaImpact.textContent = hasSuggestion ? `Impact: ${formatImpactLevel(suggestion.impactLevel)}` : "";
+		suggestionModalElements.metaSentiment.textContent = hasSuggestion ? `Sentiment: ${suggestion.sentiment || "Neutral"}` : "";
+		suggestionModalElements.metaConfidence.textContent = hasSuggestion ? `AI confidence: ${formatConfidence(suggestion.aiConfidence)}` : "";
+		suggestionModalElements.metaTracking.textContent = hasSuggestion ? `Tracking ID: ${suggestion.trackingId || "N/A"}` : "";
+
+		statusButtons.forEach((button) => {
+			const targetStatus = normalizeSuggestionStatus(button.dataset.statusTarget);
+			const isActive = hasSuggestion && normalizeSuggestionStatus(suggestion.status) === targetStatus;
+			button.classList.toggle("is-active", isActive);
+			button.disabled = modalBusy || !hasSuggestion || isActive;
+			button.setAttribute("aria-pressed", String(isActive));
+			button.textContent = getStatusLabel(targetStatus);
+		});
+
+		dialog.setAttribute("data-has-suggestion", String(hasSuggestion));
+	}
+
+	function updateModalFeedback(message, tone = "info") {
+		if (!suggestionModalElements) {
+			return;
+		}
+
+		suggestionModalElements.feedback.textContent = message || "";
+		suggestionModalElements.feedback.dataset.tone = tone;
+	}
+
+	function setModalBusy(nextBusy, message) {
+		modalBusy = nextBusy;
+		if (suggestionModalElements) {
+			suggestionModalElements.overlay.classList.toggle("is-busy", nextBusy);
+			suggestionModalElements.closeButton.disabled = nextBusy;
+			suggestionModalElements.statusButtons.forEach((button) => {
+				const targetStatus = normalizeSuggestionStatus(button.dataset.statusTarget);
+				const activeSuggestion = getSuggestionById(activeSuggestionId);
+				const isActive = Boolean(activeSuggestion) && normalizeSuggestionStatus(activeSuggestion.status) === targetStatus;
+				button.disabled = nextBusy || !activeSuggestion || isActive;
+			});
+		}
+
+		if (typeof message === "string") {
+			updateModalFeedback(message, nextBusy ? "saving" : "info");
+		}
+	}
+
+	function buildSuggestionModal() {
+		if (suggestionModalElements) {
+			return suggestionModalElements;
+		}
+
+		const overlay = document.createElement("div");
+		overlay.className = "admin-suggestion-overlay";
+		overlay.innerHTML = `
+			<div class="admin-suggestion-modal" role="dialog" aria-modal="true" aria-labelledby="suggestionModalTitle" data-has-suggestion="false">
+				<button class="admin-suggestion-modal__close" type="button" aria-label="Close suggestion details">&times;</button>
+				<div class="admin-suggestion-modal__header">
+					<div>
+						<div class="admin-panel-label">Suggestion details</div>
+						<h2 id="suggestionModalTitle">Suggestion details</h2>
+						<p id="suggestionModalSubtitle">Select a suggestion to review its status and details.</p>
+					</div>
+					<span class="status-pill status-pill--open" id="suggestionModalStatus">Open</span>
+				</div>
+				<div class="admin-suggestion-modal__body">
+					<section class="admin-suggestion-modal__panel">
+						<div class="admin-suggestion-modal__section-label">Submission</div>
+						<p class="admin-suggestion-modal__text" id="suggestionModalText"></p>
+						<div class="admin-suggestion-modal__solution" id="suggestionModalSolution"></div>
+						<div class="admin-suggestion-modal__meta">
+							<span id="suggestionModalTime"></span>
+							<span id="suggestionModalLocation"></span>
+							<span id="suggestionModalImpact"></span>
+							<span id="suggestionModalSentiment"></span>
+							<span id="suggestionModalConfidence"></span>
+							<span id="suggestionModalTracking"></span>
+						</div>
+					</section>
+					<section class="admin-suggestion-modal__panel">
+						<div class="admin-suggestion-modal__section-label">Status controls</div>
+						<div class="admin-suggestion-modal__actions">
+							<button class="admin-suggestion-status-btn" type="button" data-status-target="open">Pending / Open</button>
+							<button class="admin-suggestion-status-btn" type="button" data-status-target="progress">In Progress</button>
+							<button class="admin-suggestion-status-btn" type="button" data-status-target="resolved">Resolved</button>
+						</div>
+						<p class="admin-suggestion-modal__note">Saving a status updates the database immediately and refreshes the public feed.</p>
+						<div class="admin-suggestion-modal__feedback" id="suggestionModalFeedback"></div>
+					</section>
+				</div>
+			</div>
+		`;
+		document.body.appendChild(overlay);
+
+		suggestionModalElements = {
+			overlay,
+			dialog: overlay.querySelector(".admin-suggestion-modal"),
+			closeButton: overlay.querySelector(".admin-suggestion-modal__close"),
+			title: overlay.querySelector("#suggestionModalTitle"),
+			subtitle: overlay.querySelector("#suggestionModalSubtitle"),
+			statusBadge: overlay.querySelector("#suggestionModalStatus"),
+			text: overlay.querySelector("#suggestionModalText"),
+			solution: overlay.querySelector("#suggestionModalSolution"),
+			metaTime: overlay.querySelector("#suggestionModalTime"),
+			metaLocation: overlay.querySelector("#suggestionModalLocation"),
+			metaImpact: overlay.querySelector("#suggestionModalImpact"),
+			metaSentiment: overlay.querySelector("#suggestionModalSentiment"),
+			metaConfidence: overlay.querySelector("#suggestionModalConfidence"),
+			metaTracking: overlay.querySelector("#suggestionModalTracking"),
+			feedback: overlay.querySelector("#suggestionModalFeedback"),
+			statusButtons: Array.from(overlay.querySelectorAll("[data-status-target]"))
+		};
+
+		suggestionModalElements.closeButton.addEventListener("click", () => {
+			closeSuggestionModal();
+		});
+
+		overlay.addEventListener("click", (event) => {
+			if (event.target === overlay && !modalBusy) {
+				closeSuggestionModal();
+			}
+		});
+
+		suggestionModalElements.statusButtons.forEach((button) => {
+			button.addEventListener("click", () => {
+				void saveSuggestionStatus(button.dataset.statusTarget);
+			});
+		});
+
+		document.addEventListener("keydown", (event) => {
+			if (event.key !== "Escape" || !suggestionModalElements?.overlay.classList.contains("is-open")) {
+				return;
+			}
+
+			if (!modalBusy) {
+				closeSuggestionModal();
+			}
+		});
+
+		return suggestionModalElements;
+	}
+
+	function openSuggestionModal(suggestionId, triggerButton) {
+		buildSuggestionModal();
+		const suggestion = getSuggestionById(suggestionId);
+		if (!suggestion) {
+			return;
+		}
+
+		activeSuggestionId = String(suggestionId);
+		lastFocusedSuggestionCard = triggerButton || document.activeElement;
+		suggestionModalElements.overlay.classList.add("is-open");
+		document.body.classList.add("has-suggestion-modal-open");
+		renderSuggestionModal(suggestion);
+		updateModalFeedback("Choose a status and save it to the database.");
+		window.setTimeout(() => {
+			suggestionModalElements?.closeButton?.focus();
+		}, 0);
+	}
+
+	function closeSuggestionModal() {
+		if (!suggestionModalElements) {
+			return;
+		}
+
+		suggestionModalElements.overlay.classList.remove("is-open");
+		document.body.classList.remove("has-suggestion-modal-open");
+		activeSuggestionId = null;
+		setModalBusy(false);
+
+		if (lastFocusedSuggestionCard && typeof lastFocusedSuggestionCard.focus === "function") {
+			lastFocusedSuggestionCard.focus();
+		}
+	}
+
+	async function saveSuggestionStatus(nextStatus) {
+		if (!window.CampusVoiceAdminState || !window.campusVoiceDesktop?.updateSuggestionStatus) {
+			updateModalFeedback("Database status updates are unavailable right now.", "error");
+			return;
+		}
+
+		const suggestion = getSuggestionById(activeSuggestionId);
+		if (!suggestion) {
+			updateModalFeedback("That suggestion is no longer available.", "error");
+			return;
+		}
+
+		const normalizedNextStatus = normalizeSuggestionStatus(nextStatus);
+		const currentStatus = normalizeSuggestionStatus(suggestion.status);
+		if (currentStatus === normalizedNextStatus) {
+			updateModalFeedback(`That suggestion is already ${getStatusLabel(normalizedNextStatus).toLowerCase()}.`, "info");
+			return;
+		}
+
+		const currentState = window.CampusVoiceAdminState.getState?.();
+		setModalBusy(true, `Saving ${getStatusLabel(normalizedNextStatus).toLowerCase()}...`);
+		try {
+			const response = await window.campusVoiceDesktop.updateSuggestionStatus({
+				orgId: currentState?.organizationId,
+				suggestionId: suggestion.id,
+				status: normalizedNextStatus
+			});
+
+			if (!response?.ok || !response.state) {
+				throw new Error(response?.message || "Unable to save that status change.");
+			}
+
+			window.CampusVoiceAdminState.setLocalState?.(response.state, "suggestion-status-save");
+			updateModalFeedback(response.message || "Suggestion status updated.", "success");
+			closeSuggestionModal();
+		} catch (error) {
+			setModalBusy(false, error instanceof Error ? error.message : "Unable to save that status change.");
+			updateModalFeedback(error instanceof Error ? error.message : "Unable to save that status change.", "error");
+		}
+	}
+
 	function buildSuggestionCard(suggestion) {
 		const category = escapeHtml(suggestion.category || "Uncategorized");
-		const status = normalize(suggestion.status || "open");
+		const status = normalizeSuggestionStatus(suggestion.status || "open");
 		const sentiment = normalize(suggestion.sentiment || "neutral");
-		const statusLabel = escapeHtml(suggestion.statusLabel || (status === "progress" ? "In Progress" : status === "resolved" ? "Resolved" : "Open"));
+		const statusLabel = escapeHtml(suggestion.statusLabel || getStatusBadgeLabel(status));
 		const sentimentLabel = escapeHtml(suggestion.sentiment || "Neutral");
 		const text = escapeHtml(suggestion.text || "");
 		const time = escapeHtml(suggestion.time || suggestion.createdAt || "Just now");
+		const suggestionId = escapeHtml(suggestion.id || suggestion.trackingId || suggestion.tracking_id || "");
 
 		return `
-			<article class="admin-suggestion-card" data-category="${category}" data-status="${status}" data-sentiment="${sentiment}" data-text="${escapeHtml(suggestion.text || "")}">
+			<button type="button" class="admin-suggestion-card" data-suggestion-id="${suggestionId}" data-category="${category}" data-status="${status}" data-sentiment="${sentiment}" data-text="${escapeHtml(suggestion.text || "")}" aria-label="Open suggestion from ${category} submitted ${time}">
 				<div class="admin-suggestion-top">
 					<span>${time}</span>
 					<span class="admin-suggestion-category">#${category}</span>
@@ -57,16 +371,21 @@ function initAdminSuggestionPage() {
 					<span class="status-pill status-pill--${status === "resolved" ? "done" : status}">${statusLabel}</span>
 					<span class="admin-suggestion-sentiment admin-suggestion-sentiment--${sentiment}">${sentimentLabel}</span>
 				</div>
-			</article>
+			</button>
 		`;
 	}
 
 	function renderSuggestionCards(state) {
 		const suggestions = Array.isArray(state?.suggestions) ? state.suggestions : [];
+		suggestionIndex = new Map(suggestions.map((suggestion) => [String(suggestion.id), suggestion]));
 		const emptyMarkup = '<div class="admin-empty-state" id="suggestionEmptyState">No suggestions yet. New submissions will appear here.</div>';
 		const cardsMarkup = suggestions.map(buildSuggestionCard).join("");
 		suggestionBoard.innerHTML = `${cardsMarkup}${emptyMarkup}`;
 		suggestionEmptyState = document.getElementById("suggestionEmptyState");
+
+		if (suggestionModalElements && suggestionModalElements.overlay.classList.contains("is-open") && activeSuggestionId) {
+			renderSuggestionModal(getSuggestionById(activeSuggestionId));
+		}
 	}
 
 	function syncMetaCounts(state) {
@@ -77,12 +396,12 @@ function initAdminSuggestionPage() {
 		}
 
 		if (suggestionOpenCount) {
-			const openCount = state.suggestions.filter((suggestion) => suggestion.status === "open").length;
+			const openCount = state.suggestions.filter((suggestion) => normalizeSuggestionStatus(suggestion.status) === "open").length;
 			suggestionOpenCount.textContent = `${openCount} open`;
 		}
 
 		if (suggestionResolvedCount) {
-			const resolvedCount = state.suggestions.filter((suggestion) => suggestion.status === "resolved").length;
+			const resolvedCount = state.suggestions.filter((suggestion) => normalizeSuggestionStatus(suggestion.status) === "resolved").length;
 			suggestionResolvedCount.textContent = `${resolvedCount} resolved`;
 		}
 	}
@@ -94,11 +413,11 @@ function initAdminSuggestionPage() {
 		const categoryNames = Array.from(new Set([
 			...state.categories.map((category) => category.name),
 			...state.suggestions.map((suggestion) => suggestion.category)
-		]));
+		])).filter(Boolean);
 
 		categoryFilter.innerHTML = [
 			'<option value="all">All Categories</option>',
-			...categoryNames.map((name) => `<option value="${name}">${name}</option>`)
+			...categoryNames.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
 		].join("");
 
 		if (categoryNames.includes(selectedValue) || selectedValue === "all") {
@@ -154,6 +473,8 @@ function initAdminSuggestionPage() {
 		});
 	}
 
+	buildSuggestionModal();
+
 	if (suggestionSearch) {
 		suggestionSearch.addEventListener("input", updateSuggestionBoardVisibility);
 		suggestionSearch.addEventListener("search", updateSuggestionBoardVisibility);
@@ -178,12 +499,24 @@ function initAdminSuggestionPage() {
 		});
 	});
 
+	suggestionBoard.addEventListener("click", (event) => {
+		const card = event.target.closest(".admin-suggestion-card");
+		if (!card || !suggestionBoard.contains(card)) {
+			return;
+		}
+
+		openSuggestionModal(card.dataset.suggestionId, card);
+	});
+
 	if (window.CampusVoiceAdminState) {
 		window.CampusVoiceAdminState.subscribe((state) => {
 			renderSuggestionCards(state);
 			syncMetaCounts(state);
 			syncCategoryOptions(state);
 			updateSuggestionBoardVisibility();
+			if (suggestionModalElements && suggestionModalElements.overlay.classList.contains("is-open") && activeSuggestionId) {
+				renderSuggestionModal(getSuggestionById(activeSuggestionId));
+			}
 		});
 	}
 
