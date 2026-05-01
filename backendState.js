@@ -713,6 +713,86 @@ async function syncSuggestions(connection, orgId, categoriesByName, suggestions 
 	}
 }
 
+async function saveSuggestionSubmissions(connection, orgId, suggestions = []) {
+	const [categoryRows] = await connection.execute(
+		`SELECT id, name
+		 FROM categories
+		 WHERE org_id = ? AND is_active = 1
+		 ORDER BY id ASC`,
+		[orgId]
+	);
+	const categoriesByName = new Map((categoryRows || []).map((row) => [row.name, row.id]));
+	const [existingRows] = await connection.execute(
+		`SELECT id, tracking_id
+		 FROM suggestions
+		 WHERE org_id = ?`,
+		[orgId]
+	);
+	const existingMap = new Map((existingRows || []).map((row) => [row.tracking_id, row.id]));
+
+	for (const suggestion of suggestions) {
+		const trackingId = String(suggestion.trackingId || suggestion.tracking_id || "").trim();
+		if (!trackingId) {
+			continue;
+		}
+
+		const categoryName = String(suggestion.category || "Uncategorized").trim() || "Uncategorized";
+		const categoryId = categoriesByName.get(categoryName) || null;
+		const aiConfidence = normalizePercent(
+			suggestion.aiConfidence ?? suggestion.confidence ?? 80,
+			80
+		) / 100;
+		const status = String(suggestion.status || "open").toLowerCase();
+		const sentiment = String(suggestion.sentiment || "Neutral");
+		const impactLevel = normalizeImpactLevel(suggestion.impactLevel || "medium");
+		const location = String(suggestion.location || "").trim();
+		const suggestedSolution = String(suggestion.suggestedSolution || "").trim();
+		const text = String(suggestion.text || "").trim();
+		const existingId = existingMap.get(trackingId);
+		const resolvedAt = status === "resolved" ? new Date() : null;
+
+		if (existingId) {
+			await connection.execute(
+				`UPDATE suggestions
+				 SET category_id = ?, text = ?, suggested_solution = ?, impact_level = ?, location = ?, sentiment = ?, status = ?, ai_confidence = ?, resolved_at = ?
+				 WHERE id = ?`,
+				[
+					categoryId,
+					text,
+					suggestedSolution,
+					impactLevel,
+					location,
+					sentiment,
+					status,
+					aiConfidence,
+					resolvedAt,
+					existingId
+				]
+			);
+			continue;
+		}
+
+		await connection.execute(
+			`INSERT INTO suggestions (
+				org_id, category_id, tracking_id, text, suggested_solution, impact_level, location, sentiment, status, ai_confidence, created_at, resolved_at
+			 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`,
+			[
+				orgId,
+				categoryId,
+				trackingId,
+				text,
+				suggestedSolution,
+				impactLevel,
+				location,
+				sentiment,
+				status,
+				aiConfidence,
+				resolvedAt
+			]
+		);
+	}
+}
+
 async function syncReportHistory(connection, orgId, adminId, reportHistory = []) {
 	if (!reportHistory.length) {
 		return;
@@ -758,8 +838,7 @@ async function saveAdminState(pool, payload = {}) {
 	try {
 		await connection.beginTransaction();
 		if (isSuggestionSubmit) {
-			const categoriesByName = new Map();
-			await syncSuggestions(connection, organization.id, categoriesByName, state.suggestions || []);
+			await saveSuggestionSubmissions(connection, organization.id, state.suggestions || []);
 		} else {
 			if (isPublicSettingsChange || isDashboardLinkChange || source === "local") {
 				await syncAppSettings(connection, organization, state);

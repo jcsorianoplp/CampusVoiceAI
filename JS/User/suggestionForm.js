@@ -13,6 +13,7 @@ const publicTopCategoryValue = document.getElementById("publicTopCategoryValue")
 const publicResolutionValue = document.getElementById("publicResolutionValue");
 const publicTrendChart = document.getElementById("publicTrendChart");
 const publicActivityFeed = document.getElementById("publicActivityFeed");
+const publicAiIntegrationList = document.getElementById("publicAiIntegrationList");
 
 const brandTextNodes = Array.from(document.querySelectorAll(".wireframe-brand-text"));
 const headlineStrongNodes = Array.from(document.querySelectorAll(".wireframe-headline strong"));
@@ -59,6 +60,28 @@ function getResponseRate(state) {
 
 	const resolvedCount = state.suggestions.filter((suggestion) => suggestion.status === "resolved").length;
 	return Math.round((resolvedCount / total) * 100);
+}
+
+function fitPublicMetricText(element) {
+	if (!element) {
+		return;
+	}
+
+	element.style.fontSize = "";
+	const computed = window.getComputedStyle(element);
+	const baseFontSize = Number.parseFloat(computed.fontSize || "0") || 16;
+	const minFontSize = 11;
+	let fontSize = baseFontSize;
+
+	while (fontSize >= minFontSize) {
+		element.style.fontSize = `${fontSize}px`;
+		if (element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight) {
+			return;
+		}
+		fontSize -= 1;
+	}
+
+	element.style.fontSize = `${minFontSize}px`;
 }
 
 function inferCategory(text) {
@@ -127,6 +150,7 @@ function renderPublicPanel(state) {
 
 	if (publicTopCategoryValue) {
 		publicTopCategoryValue.textContent = topCategory.replace(/^Campus\s+/i, "");
+		window.requestAnimationFrame(() => fitPublicMetricText(publicTopCategoryValue));
 	}
 
 	if (publicResolutionValue) {
@@ -147,6 +171,27 @@ function renderPublicPanel(state) {
 				`;
 			}).join("")
 			: '<div class="public-feed-empty">No public activity yet.</div>';
+	}
+
+	if (publicAiIntegrationList) {
+		const aiInsights = Array.isArray(state.aiInsights) ? state.aiInsights : [];
+
+		if (!aiInsights.length) {
+			publicAiIntegrationList.className = "public-ai-empty";
+			publicAiIntegrationList.textContent = "No AI integration data yet. Connect a model, rule engine, or live feed here later.";
+		} else {
+			publicAiIntegrationList.className = "public-ai-list";
+			publicAiIntegrationList.innerHTML = aiInsights.slice(0, 4).map((item) => {
+				const title = String(item.title || item.label || item.name || "AI Insight");
+				const summary = String(item.summary || item.detail || item.value || "Live AI output will appear here.");
+				return `
+					<article class="public-ai-item">
+						<div class="public-ai-item-title">${title}</div>
+						<div class="public-ai-item-copy">${summary}</div>
+					</article>
+				`;
+			}).join("");
+		}
 	}
 
 	if (publicActivityFeed) {
