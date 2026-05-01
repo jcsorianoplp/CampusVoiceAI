@@ -1,0 +1,563 @@
+// adminAICategories.js - Updated to use real Python API
+
+// ============ API CONFIGURATION ============
+const API_BASE_URL = "http://localhost:8001";
+
+// DOM Elements
+const categoryForm = document.getElementById("categoryForm");
+const categoryNameInput = document.getElementById("categoryNameInput");
+const categoryPriorityInput = document.getElementById("categoryPriorityInput");
+const categoryRouteInput = document.getElementById("categoryRouteInput");
+const categorySlaInput = document.getElementById("categorySlaInput");
+const categoryConfidenceInput = document.getElementById("categoryConfidenceInput");
+const categoryKeywordInput = document.getElementById("categoryKeywordInput");
+
+const categoryList = document.getElementById("categoryList");
+const reviewQueueList = document.getElementById("reviewQueueList");
+const publicMappingList = document.getElementById("publicMappingList");
+
+const activeCategoryCount = document.getElementById("aiActiveCategoryCount");
+const lowConfidenceCount = document.getElementById("aiLowConfidenceCount");
+const averageConfidence = document.getElementById("aiAverageConfidence");
+const autoRoutedRate = document.getElementById("aiAutoRoutedRate");
+
+const routingThresholdInput = document.getElementById("routingThresholdInput");
+const routingThresholdValue = document.getElementById("routingThresholdValue");
+const aiRuleTestInput = document.getElementById("aiRuleTestInput");
+const aiRuleTestResult = document.getElementById("aiRuleTestResult");
+const aiLiveSyncStatus = document.getElementById("aiLiveSyncStatus");
+
+const syncCategoryStats = document.getElementById("syncCategoryStats");
+const saveCategoryRules = document.getElementById("saveCategoryRules");
+const categorySaveStatus = document.getElementById("categorySaveStatus");
+const reviewQueueStatus = document.getElementById("reviewQueueStatus");
+const uncertainQueueToggle = document.getElementById("uncertainQueueToggle");
+const publicBucketToggle = document.getElementById("publicBucketToggle");
+const keywordBoostToggle = document.getElementById("keywordBoostToggle");
+
+// ============ HELPER FUNCTIONS ============
+function normalizeKeywords(input) {
+    return String(input || "")
+        .split(",")
+        .map((keyword) => keyword.trim().toLowerCase())
+        .filter(Boolean)
+        .slice(0, 6);
+}
+
+function getPriorityClass(priority) {
+    if (priority === "high") return "admin-ai-pill--high";
+    if (priority === "low") return "admin-ai-pill--low";
+    return "admin-ai-pill--medium";
+}
+
+function showStatus(message, isError = false) {
+    if (categorySaveStatus) {
+        categorySaveStatus.textContent = message;
+        categorySaveStatus.style.color = isError ? "var(--error-color, #dc2626)" : "var(--success-color, #10b981)";
+        setTimeout(() => {
+            if (categorySaveStatus) {
+                categorySaveStatus.style.color = "";
+            }
+        }, 3000);
+    }
+}
+
+// ============ API CALLS ============
+async function apiFetch(endpoint, options = {}) {
+    try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            headers: {
+                "Content-Type": "application/json",
+                ...options.headers
+            },
+            ...options
+        });
+        
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || `HTTP ${response.status}`);
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error(`API Error (${endpoint}):`, error);
+        throw error;
+    }
+}
+
+async function loadCategoriesAndStats() {
+    try {
+        const data = await apiFetch("/categories");
+        
+        // Update UI state
+        if (window.CampusVoiceAdminState) {
+            window.CampusVoiceAdminState.updateState((state) => {
+                state.categories = data.categories.map(cat => ({
+                    name: cat.name,
+                    priority: cat.priority,
+                    route: cat.route,
+                    sla: cat.sla,
+                    confidence: cat.confidence,
+                    volume: cat.volume || 0,
+                    keywords: cat.keywords || []
+                }));
+                state.lastUpdated = new Date().toLocaleString();
+                return state;
+            }, "api-load");
+        }
+        
+        // Update stats cards
+        if (data.stats) {
+            if (activeCategoryCount) activeCategoryCount.textContent = data.stats.active_count;
+            if (averageConfidence) averageConfidence.textContent = `${data.stats.avg_confidence}%`;
+            if (autoRoutedRate) autoRoutedRate.textContent = `${data.stats.auto_routed_rate}%`;
+            if (lowConfidenceCount) lowConfidenceCount.textContent = data.stats.review_queue_count;
+        }
+        
+        renderCategoryList(data.categories);
+        renderPublicMapping(data.categories);
+        
+        return data;
+    } catch (error) {
+        console.error("Failed to load categories:", error);
+        showStatus("Failed to load categories. Is the Python API running?", true);
+        return null;
+    }
+}
+
+async function loadReviewQueue() {
+    try {
+        const data = await apiFetch("/review_queue");
+        
+        if (window.CampusVoiceAdminState) {
+            window.CampusVoiceAdminState.updateState((state) => {
+                state.reviewQueue = data.queue.map(item => ({
+                    id: item.id,
+                    predicted: item.predicted_category,
+                    confidence: item.confidence,
+                    text: item.suggestion_text
+                }));
+                state.lastUpdated = new Date().toLocaleString();
+                return state;
+            }, "api-load-queue");
+        }
+        
+        if (lowConfidenceCount) lowConfidenceCount.textContent = data.count;
+        renderReviewQueue(data.queue);
+        
+        return data;
+    } catch (error) {
+        console.error("Failed to load review queue:", error);
+        return null;
+    }
+}
+
+async function loadAIRules() {
+    try {
+        const rules = await apiFetch("/ai_rules");
+        
+        if (routingThresholdInput) {
+            routingThresholdInput.value = rules.routing_threshold;
+            if (routingThresholdValue) routingThresholdValue.textContent = `${rules.routing_threshold}%`;
+        }
+        
+        if (uncertainQueueToggle) uncertainQueueToggle.checked = rules.uncertain_queue;
+        if (publicBucketToggle) publicBucketToggle.checked = rules.public_sync;
+        if (keywordBoostToggle) keywordBoostToggle.checked = rules.keyword_boost;
+        
+        if (window.CampusVoiceAdminState) {
+            window.CampusVoiceAdminState.updateState((state) => {
+                state.aiRules = {
+                    threshold: rules.routing_threshold,
+                    uncertainQueue: rules.uncertain_queue,
+                    publicSync: rules.public_sync,
+                    keywordBoost: rules.keyword_boost
+                };
+                return state;
+            }, "api-load-rules");
+        }
+        
+        return rules;
+    } catch (error) {
+        console.error("Failed to load AI rules:", error);
+        return null;
+    }
+}
+
+async function saveAIRules() {
+    try {
+        const rules = {
+            routing_threshold: parseInt(routingThresholdInput?.value) || 80,
+            uncertain_queue: uncertainQueueToggle?.checked ? 1 : 0,
+            public_sync: publicBucketToggle?.checked ? 1 : 0,
+            keyword_boost: keywordBoostToggle?.checked ? 1 : 0
+        };
+        
+        await apiFetch("/ai_rules", {
+            method: "PUT",
+            body: JSON.stringify(rules)
+        });
+        
+        showStatus("AI rules saved successfully!");
+        
+        // Reload to update stats
+        await loadCategoriesAndStats();
+        
+        return true;
+    } catch (error) {
+        console.error("Failed to save AI rules:", error);
+        showStatus("Failed to save rules", true);
+        return false;
+    }
+}
+
+async function addCategory(name, priority, route, sla, confidence, keywords) {
+    try {
+        await apiFetch("/categories", {
+            method: "POST",
+            body: JSON.stringify({
+                name,
+                priority,
+                route,
+                sla,
+                confidence,
+                keywords
+            })
+        });
+        
+        showStatus(`Added category "${name}" and synced to backend.`);
+        await loadCategoriesAndStats();
+        
+        return true;
+    } catch (error) {
+        console.error("Failed to add category:", error);
+        showStatus(`Failed to add category: ${error.message}`, true);
+        return false;
+    }
+}
+
+async function applyReviewCorrection(reviewId, newCategory) {
+    try {
+        await apiFetch("/review_queue/apply", {
+            method: "POST",
+            body: JSON.stringify({
+                review_id: reviewId,
+                new_category: newCategory
+            })
+        });
+        
+        showStatus(`Correction saved to ${newCategory}.`);
+        await loadReviewQueue();
+        await loadCategoriesAndStats();
+        
+        return true;
+    } catch (error) {
+        console.error("Failed to apply correction:", error);
+        showStatus("Failed to apply correction", true);
+        return false;
+    }
+}
+
+async function runTestClassification(text) {
+    if (!text || text.length < 3) {
+        if (aiRuleTestResult) {
+            aiRuleTestResult.textContent = "Type a sample suggestion to preview classification behavior.";
+        }
+        return null;
+    }
+    
+    try {
+        const result = await apiFetch("/test", {
+            method: "POST",
+            body: JSON.stringify({ text })
+        });
+        
+        if (aiRuleTestResult) {
+            aiRuleTestResult.textContent = result.message;
+        }
+        
+        return result;
+    } catch (error) {
+        console.error("Test failed:", error);
+        if (aiRuleTestResult) {
+            aiRuleTestResult.textContent = "Error testing classification. Is the API running?";
+        }
+        return null;
+    }
+}
+
+async function syncFromAdmin() {
+    if (!window.CampusVoiceAdminState) {
+        showStatus("No admin state available", true);
+        return;
+    }
+    
+    const state = window.CampusVoiceAdminState.getState();
+    const categoriesToSync = state.categories.map(cat => ({
+        name: cat.name,
+        priority: cat.priority,
+        route: cat.route,
+        sla: cat.sla,
+        confidence: cat.confidence,
+        keywords: cat.keywords || []
+    }));
+    
+    try {
+        await apiFetch("/sync_from_admin", {
+            method: "POST",
+            body: JSON.stringify(categoriesToSync)
+        });
+        
+        showStatus(`Synced ${categoriesToSync.length} categories to AI backend.`);
+        await loadCategoriesAndStats();
+        
+        return true;
+    } catch (error) {
+        console.error("Failed to sync:", error);
+        showStatus("Failed to sync categories", true);
+        return false;
+    }
+}
+
+// ============ RENDER FUNCTIONS ============
+function renderCategoryList(categories) {
+    if (!categoryList) return;
+    
+    categoryList.innerHTML = "";
+    
+    if (!categories || categories.length === 0) {
+        categoryList.innerHTML = "<div class='admin-ai-status'>No categories defined. Add one above.</div>";
+        return;
+    }
+    
+    categories.forEach((category) => {
+        const item = document.createElement("article");
+        item.className = "admin-ai-item";
+        
+        const keywordTags = (category.keywords || [])
+            .map((keyword) => `<span>${escapeHtml(keyword)}</span>`)
+            .join("");
+        
+        item.innerHTML = `
+            <div class="admin-ai-item-top">
+                <div class="admin-ai-item-name">${escapeHtml(category.name)}</div>
+                <span class="admin-ai-pill ${getPriorityClass(category.priority)}">${category.priority.toUpperCase()} Priority</span>
+            </div>
+            <div class="admin-ai-item-bottom">
+                <span class="admin-ai-meta">Route: ${escapeHtml(category.route)}</span>
+                <span class="admin-ai-meta">SLA: ${escapeHtml(category.sla)}</span>
+                <span class="admin-ai-meta">Confidence: ${category.confidence}%</span>
+                <span class="admin-ai-meta">Volume: ${category.volume || 0}</span>
+            </div>
+            <div class="admin-ai-tags">${keywordTags || "<span>No hints yet</span>"}</div>
+        `;
+        
+        categoryList.appendChild(item);
+    });
+}
+
+function renderReviewQueue(queue) {
+    if (!reviewQueueList) return;
+    
+    reviewQueueList.innerHTML = "";
+    
+    if (!queue || queue.length === 0) {
+        reviewQueueList.innerHTML = "<div class='admin-ai-status'>No low-confidence suggestions remaining.</div>";
+        if (reviewQueueStatus) {
+            reviewQueueStatus.textContent = "All uncertain items have been reviewed.";
+        }
+        return;
+    }
+    
+    // Get categories for dropdown
+    const state = window.CampusVoiceAdminState?.getState();
+    const categories = state?.categories || [];
+    
+    queue.forEach((reviewItem) => {
+        const item = document.createElement("article");
+        item.className = "admin-ai-review-item";
+        
+        const options = categories
+            .map((category) => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`)
+            .join("");
+        
+        item.innerHTML = `
+            <div class="admin-ai-review-top">
+                <span>Predicted: ${escapeHtml(reviewItem.predicted_category)}</span>
+                <span>${Math.round(reviewItem.confidence)}% confidence</span>
+            </div>
+            <p>${escapeHtml(reviewItem.suggestion_text)}</p>
+            <div class="admin-ai-review-actions">
+                <select class="admin-filter" data-review-select="${reviewItem.id}">${options}</select>
+                <button class="admin-secondary-btn" type="button" data-review-apply="${reviewItem.id}">Apply</button>
+            </div>
+        `;
+        
+        reviewQueueList.appendChild(item);
+    });
+    
+    if (reviewQueueStatus) {
+        reviewQueueStatus.textContent = "Apply corrections to improve classifier quality.";
+    }
+}
+
+function renderPublicMapping(categories) {
+    if (!publicMappingList) return;
+    
+    publicMappingList.innerHTML = "";
+    
+    const topCategories = categories.slice(0, 6);
+    topCategories.forEach((category) => {
+        const mappingItem = document.createElement("li");
+        const publicLabel = category.name.replace("Campus ", "").replace("Services", "Support");
+        mappingItem.innerHTML = `
+            <span>${escapeHtml(category.name)}</span>
+            <i class="bi bi-arrow-right"></i>
+            <span>${escapeHtml(publicLabel)}</span>
+        `;
+        publicMappingList.appendChild(mappingItem);
+    });
+}
+
+function escapeHtml(str) {
+    if (!str) return "";
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+// ============ EVENT LISTENERS ============
+
+// Threshold slider
+if (routingThresholdInput) {
+    routingThresholdInput.addEventListener("input", async () => {
+        const value = routingThresholdInput.value;
+        if (routingThresholdValue) routingThresholdValue.textContent = `${value}%`;
+        await saveAIRules();
+    });
+}
+
+// Toggle switches
+if (uncertainQueueToggle) {
+    uncertainQueueToggle.addEventListener("change", saveAIRules);
+}
+if (publicBucketToggle) {
+    publicBucketToggle.addEventListener("change", saveAIRules);
+}
+if (keywordBoostToggle) {
+    keywordBoostToggle.addEventListener("change", saveAIRules);
+}
+
+// Test input debouncing
+let testTimeout;
+if (aiRuleTestInput) {
+    aiRuleTestInput.addEventListener("input", () => {
+        clearTimeout(testTimeout);
+        testTimeout = setTimeout(() => {
+            runTestClassification(aiRuleTestInput.value);
+        }, 500);
+    });
+}
+
+// Category form submission
+if (categoryForm) {
+    categoryForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        
+        const name = categoryNameInput?.value.trim();
+        if (!name) return;
+        
+        const confidence = Number(categoryConfidenceInput?.value || "84");
+        const keywords = normalizeKeywords(categoryKeywordInput?.value || "");
+        
+        await addCategory(
+            name,
+            categoryPriorityInput?.value || "medium",
+            categoryRouteInput?.value || "Student Affairs",
+            categorySlaInput?.value || "24h",
+            Math.max(50, Math.min(99, confidence)),
+            keywords
+        );
+        
+        categoryForm.reset();
+        if (categoryPriorityInput) categoryPriorityInput.value = "medium";
+        if (categoryConfidenceInput) categoryConfidenceInput.value = "84";
+    });
+}
+
+// Review queue actions
+if (reviewQueueList) {
+    reviewQueueList.addEventListener("click", async (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        
+        const itemId = target.getAttribute("data-review-apply");
+        if (!itemId) return;
+        
+        const select = reviewQueueList.querySelector(`[data-review-select="${itemId}"]`);
+        if (!(select instanceof HTMLSelectElement)) return;
+        
+        await applyReviewCorrection(itemId, select.value);
+    });
+}
+
+// Sync button
+if (syncCategoryStats) {
+    syncCategoryStats.addEventListener("click", async () => {
+        showStatus("Refreshing data from backend...");
+        await loadCategoriesAndStats();
+        await loadReviewQueue();
+    });
+}
+
+// Save rules button
+if (saveCategoryRules) {
+    saveCategoryRules.addEventListener("click", async () => {
+        await saveAIRules();
+        await syncFromAdmin();
+    });
+}
+
+// ============ INITIALIZATION ============
+async function init() {
+    // Show loading state
+    if (aiLiveSyncStatus) {
+        aiLiveSyncStatus.textContent = "Connecting to AI backend...";
+    }
+    
+    // Load all data
+    await loadCategoriesAndStats();
+    await loadReviewQueue();
+    await loadAIRules();
+    
+    if (aiLiveSyncStatus) {
+        aiLiveSyncStatus.textContent = "Live sync active. Connected to AI backend API.";
+    }
+    
+    // Subscribe to admin state changes (for sync from other tabs)
+    if (window.CampusVoiceAdminState) {
+        window.CampusVoiceAdminState.subscribe(async (state, meta) => {
+            if (meta.source !== "api-load" && meta.source !== "api-load-queue" && meta.source !== "api-load-rules") {
+                // If changes come from UI (not API), sync to backend
+                if (meta.source === "ai-category-add" || meta.source === "ai-save") {
+                    await syncFromAdmin();
+                }
+            }
+            
+            // Update local rendering
+            if (state.categories) renderCategoryList(state.categories);
+            if (state.reviewQueue) renderReviewQueue(state.reviewQueue);
+            if (state.categories) renderPublicMapping(state.categories);
+            
+            if (aiLiveSyncStatus && meta) {
+                aiLiveSyncStatus.textContent = `Live sync active. Last update from ${meta.source}.`;
+            }
+        });
+    }
+}
+
+// Start the app
+init();
