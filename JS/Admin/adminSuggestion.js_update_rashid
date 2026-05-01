@@ -1,0 +1,634 @@
+// adminSuggestion.js - Updated with AI Confidence Display
+
+function normalize(value) {
+	return String(value || "").trim().toLowerCase();
+}
+
+function escapeHtml(value) {
+	return String(value ?? "")
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/\"/g, "&quot;")
+		.replace(/'/g, "&#39;");
+}
+
+function normalizeSuggestionStatus(value) {
+	const status = normalize(value || "open");
+
+	if (status === "pending") {
+		return "open";
+	}
+
+	if (status === "in progress") {
+		return "progress";
+	}
+
+	if (status === "done") {
+		return "resolved";
+	}
+
+	if (status === "open" || status === "progress" || status === "resolved") {
+		return status;
+	}
+
+	return "open";
+}
+
+function getStatusLabel(status) {
+	if (status === "progress") {
+		return "In Progress";
+	}
+
+	if (status === "resolved") {
+		return "Resolved";
+	}
+
+	return "Pending / Open";
+}
+
+function getStatusBadgeLabel(status) {
+	if (status === "progress") {
+		return "In Progress";
+	}
+
+	if (status === "resolved") {
+		return "Resolved";
+	}
+
+	return "Open";
+}
+
+function formatImpactLevel(value) {
+	const level = normalize(value || "medium");
+	if (level === "high") {
+		return "High";
+	}
+
+	if (level === "low") {
+		return "Low";
+	}
+
+	return "Medium";
+}
+
+function formatConfidence(value) {
+	const numericValue = Number(value);
+	if (!Number.isFinite(numericValue)) {
+		return "0%";
+	}
+	return `${Math.max(0, Math.min(100, Math.round(numericValue)))}%`;
+}
+
+// NEW: Get confidence color class based on value and threshold
+function getConfidenceClass(confidence, threshold = 80) {
+	const conf = Number(confidence) || 0;
+	if (conf >= threshold) return "confidence-high";
+	if (conf >= 60) return "confidence-medium";
+	return "confidence-low";
+}
+
+// NEW: Get confidence label
+function getConfidenceLabel(confidence) {
+	const conf = Number(confidence) || 0;
+	if (conf >= 80) return "High confidence";
+	if (conf >= 60) return "Medium confidence";
+	return "Low confidence (needs review)";
+}
+
+let suggestionPageInitialized = false;
+let suggestionIndex = new Map();
+let activeSuggestionId = null;
+let lastFocusedSuggestionCard = null;
+let modalBusy = false;
+let suggestionModalElements = null;
+
+// NEW: Track current routing threshold for confidence filtering
+let currentRoutingThreshold = 80;
+
+// NEW: Fetch AI rules to get current threshold
+async function loadAIRulesForFilter() {
+	try {
+		const response = await fetch("http://localhost:8001/ai_rules");
+		if (response.ok) {
+			const rules = await response.json();
+			currentRoutingThreshold = rules.routing_threshold || 80;
+			// Update low confidence filter option text
+			const lowConfidenceFilter = document.getElementById("lowConfidenceFilter");
+			if (lowConfidenceFilter) {
+				lowConfidenceFilter.textContent = `Low Confidence (<${currentRoutingThreshold}%)`;
+			}
+		}
+	} catch (error) {
+		console.warn("Could not load AI rules for filter:", error);
+		// Keep default 80
+	}
+}
+
+function initAdminSuggestionPage() {
+	if (suggestionPageInitialized) {
+		return true;
+	}
+
+	const suggestionSearch = document.getElementById("suggestionSearch");
+	const categoryFilter = document.getElementById("categoryFilter");
+	const statusFilter = document.getElementById("statusFilter");
+	const sentimentFilter = document.getElementById("sentimentFilter");
+	const lowConfidenceFilter = document.getElementById("lowConfidenceFilter"); // NEW
+	const suggestionBoard = document.getElementById("suggestionBoard");
+	let suggestionEmptyState = document.getElementById("suggestionEmptyState");
+	const viewToggleButtons = Array.from(document.querySelectorAll("[data-view-mode]"));
+	const suggestionTotalCount = document.getElementById("suggestionTotalCount");
+	const suggestionOpenCount = document.getElementById("suggestionOpenCount");
+	const suggestionResolvedCount = document.getElementById("suggestionResolvedCount");
+
+	if (!suggestionBoard) {
+		return false;
+	}
+
+	function getCards() {
+		return Array.from(suggestionBoard.querySelectorAll(".admin-suggestion-card"));
+	}
+
+	function getSuggestionById(suggestionId) {
+		return suggestionIndex.get(String(suggestionId)) || null;
+	}
+
+	// NEW: Get confidence filter value
+	function getLowConfidenceFilterValue() {
+		if (!lowConfidenceFilter) return "all";
+		return lowConfidenceFilter.value;
+	}
+
+	function renderSuggestionModal(suggestion) {
+		if (!suggestionModalElements) {
+			return;
+		}
+
+		const dialog = suggestionModalElements.dialog;
+		const statusButtons = suggestionModalElements.statusButtons;
+		const hasSuggestion = Boolean(suggestion);
+
+		suggestionModalElements.title.textContent = hasSuggestion ? `#${suggestion.category || "Uncategorized"}` : "Suggestion details";
+		suggestionModalElements.subtitle.textContent = hasSuggestion
+			? `${suggestion.trackingId || "No tracking ID"} • ${suggestion.time || suggestion.createdAt || "Just now"}`
+			: "Select a suggestion to review its status and details.";
+
+		suggestionModalElements.statusBadge.className = `status-pill status-pill--${hasSuggestion && normalizeSuggestionStatus(suggestion.status) === "resolved" ? "done" : hasSuggestion ? normalizeSuggestionStatus(suggestion.status) : "open"}`;
+		suggestionModalElements.statusBadge.textContent = hasSuggestion ? getStatusBadgeLabel(normalizeSuggestionStatus(suggestion.status)) : "Open";
+
+		suggestionModalElements.text.textContent = hasSuggestion ? suggestion.text || "No suggestion text available." : "";
+		suggestionModalElements.solution.textContent = hasSuggestion && suggestion.suggestedSolution ? suggestion.suggestedSolution : "No suggested solution provided.";
+		suggestionModalElements.solution.hidden = !hasSuggestion || !suggestion.suggestedSolution;
+
+		suggestionModalElements.metaTime.textContent = hasSuggestion ? `Submitted ${suggestion.createdAt || suggestion.time || "Just now"}` : "";
+		suggestionModalElements.metaLocation.textContent = hasSuggestion ? `Location: ${suggestion.location || "General"}` : "";
+		suggestionModalElements.metaImpact.textContent = hasSuggestion ? `Impact: ${formatImpactLevel(suggestion.impactLevel)}` : "";
+		suggestionModalElements.metaSentiment.textContent = hasSuggestion ? `Sentiment: ${suggestion.sentiment || "Neutral"}` : "";
+		
+		// NEW: Display AI confidence with better formatting
+		const confidence = suggestion.aiConfidence || suggestion.confidence || 0;
+		const confidenceClass = getConfidenceClass(confidence, currentRoutingThreshold);
+		suggestionModalElements.metaConfidence.innerHTML = hasSuggestion 
+			? `AI confidence: <span class="${confidenceClass}">${formatConfidence(confidence)}</span> <span class="confidence-note">(${getConfidenceLabel(confidence)})</span>`
+			: "AI confidence: —";
+		
+		suggestionModalElements.metaTracking.textContent = hasSuggestion ? `Tracking ID: ${suggestion.trackingId || "N/A"}` : "";
+
+		statusButtons.forEach((button) => {
+			const targetStatus = normalizeSuggestionStatus(button.dataset.statusTarget);
+			const isActive = hasSuggestion && normalizeSuggestionStatus(suggestion.status) === targetStatus;
+			button.classList.toggle("is-active", isActive);
+			button.disabled = modalBusy || !hasSuggestion || isActive;
+			button.setAttribute("aria-pressed", String(isActive));
+			button.textContent = getStatusLabel(targetStatus);
+		});
+
+		dialog.setAttribute("data-has-suggestion", String(hasSuggestion));
+	}
+
+	function updateModalFeedback(message, tone = "info") {
+		if (!suggestionModalElements) {
+			return;
+		}
+
+		suggestionModalElements.feedback.textContent = message || "";
+		suggestionModalElements.feedback.dataset.tone = tone;
+	}
+
+	function setModalBusy(nextBusy, message) {
+		modalBusy = nextBusy;
+		if (suggestionModalElements) {
+			suggestionModalElements.overlay.classList.toggle("is-busy", nextBusy);
+			suggestionModalElements.closeButton.disabled = nextBusy;
+			suggestionModalElements.statusButtons.forEach((button) => {
+				const targetStatus = normalizeSuggestionStatus(button.dataset.statusTarget);
+				const activeSuggestion = getSuggestionById(activeSuggestionId);
+				const isActive = Boolean(activeSuggestion) && normalizeSuggestionStatus(activeSuggestion.status) === targetStatus;
+				button.disabled = nextBusy || !activeSuggestion || isActive;
+			});
+		}
+
+		if (typeof message === "string") {
+			updateModalFeedback(message, nextBusy ? "saving" : "info");
+		}
+	}
+
+	function buildSuggestionModal() {
+		if (suggestionModalElements) {
+			return suggestionModalElements;
+		}
+
+		const overlay = document.createElement("div");
+		overlay.className = "admin-suggestion-overlay";
+		overlay.innerHTML = `
+			<div class="admin-suggestion-modal" role="dialog" aria-modal="true" aria-labelledby="suggestionModalTitle" data-has-suggestion="false">
+				<button class="admin-suggestion-modal__close" type="button" aria-label="Close suggestion details">&times;</button>
+				<div class="admin-suggestion-modal__header">
+					<div>
+						<div class="admin-panel-label">Suggestion details</div>
+						<h2 id="suggestionModalTitle">Suggestion details</h2>
+						<p id="suggestionModalSubtitle">Select a suggestion to review its status and details.</p>
+					</div>
+					<span class="status-pill status-pill--open" id="suggestionModalStatus">Open</span>
+				</div>
+				<div class="admin-suggestion-modal__body">
+					<section class="admin-suggestion-modal__panel">
+						<div class="admin-suggestion-modal__section-label">Submission</div>
+						<p class="admin-suggestion-modal__text" id="suggestionModalText"></p>
+						<div class="admin-suggestion-modal__solution" id="suggestionModalSolution"></div>
+						<div class="admin-suggestion-modal__meta">
+							<span id="suggestionModalTime"></span>
+							<span id="suggestionModalLocation"></span>
+							<span id="suggestionModalImpact"></span>
+							<span id="suggestionModalSentiment"></span>
+							<span id="suggestionModalConfidence"></span>
+							<span id="suggestionModalTracking"></span>
+						</div>
+					</section>
+					<section class="admin-suggestion-modal__panel">
+						<div class="admin-suggestion-modal__section-label">Status controls</div>
+						<div class="admin-suggestion-modal__actions">
+							<button class="admin-suggestion-status-btn" type="button" data-status-target="open">Pending / Open</button>
+							<button class="admin-suggestion-status-btn" type="button" data-status-target="progress">In Progress</button>
+							<button class="admin-suggestion-status-btn" type="button" data-status-target="resolved">Resolved</button>
+						</div>
+						<p class="admin-suggestion-modal__note">Saving a status updates the database immediately and refreshes the public feed.</p>
+						<div class="admin-suggestion-modal__feedback" id="suggestionModalFeedback"></div>
+					</section>
+				</div>
+			</div>
+		`;
+		document.body.appendChild(overlay);
+
+		suggestionModalElements = {
+			overlay,
+			dialog: overlay.querySelector(".admin-suggestion-modal"),
+			closeButton: overlay.querySelector(".admin-suggestion-modal__close"),
+			title: overlay.querySelector("#suggestionModalTitle"),
+			subtitle: overlay.querySelector("#suggestionModalSubtitle"),
+			statusBadge: overlay.querySelector("#suggestionModalStatus"),
+			text: overlay.querySelector("#suggestionModalText"),
+			solution: overlay.querySelector("#suggestionModalSolution"),
+			metaTime: overlay.querySelector("#suggestionModalTime"),
+			metaLocation: overlay.querySelector("#suggestionModalLocation"),
+			metaImpact: overlay.querySelector("#suggestionModalImpact"),
+			metaSentiment: overlay.querySelector("#suggestionModalSentiment"),
+			metaConfidence: overlay.querySelector("#suggestionModalConfidence"),
+			metaTracking: overlay.querySelector("#suggestionModalTracking"),
+			feedback: overlay.querySelector("#suggestionModalFeedback"),
+			statusButtons: Array.from(overlay.querySelectorAll("[data-status-target]"))
+		};
+
+		suggestionModalElements.closeButton.addEventListener("click", () => {
+			closeSuggestionModal();
+		});
+
+		overlay.addEventListener("click", (event) => {
+			if (event.target === overlay && !modalBusy) {
+				closeSuggestionModal();
+			}
+		});
+
+		suggestionModalElements.statusButtons.forEach((button) => {
+			button.addEventListener("click", () => {
+				void saveSuggestionStatus(button.dataset.statusTarget);
+			});
+		});
+
+		document.addEventListener("keydown", (event) => {
+			if (event.key !== "Escape" || !suggestionModalElements?.overlay.classList.contains("is-open")) {
+				return;
+			}
+
+			if (!modalBusy) {
+				closeSuggestionModal();
+			}
+		});
+
+		return suggestionModalElements;
+	}
+
+	function openSuggestionModal(suggestionId, triggerButton) {
+		buildSuggestionModal();
+		const suggestion = getSuggestionById(suggestionId);
+		if (!suggestion) {
+			return;
+		}
+
+		activeSuggestionId = String(suggestionId);
+		lastFocusedSuggestionCard = triggerButton || document.activeElement;
+		suggestionModalElements.overlay.classList.add("is-open");
+		document.body.classList.add("has-suggestion-modal-open");
+		renderSuggestionModal(suggestion);
+		updateModalFeedback("Choose a status to update this suggestion.");
+		window.setTimeout(() => {
+			suggestionModalElements?.closeButton?.focus();
+		}, 0);
+	}
+
+	function closeSuggestionModal() {
+		if (!suggestionModalElements) {
+			return;
+		}
+
+		suggestionModalElements.overlay.classList.remove("is-open");
+		document.body.classList.remove("has-suggestion-modal-open");
+		activeSuggestionId = null;
+		setModalBusy(false);
+
+		if (lastFocusedSuggestionCard && typeof lastFocusedSuggestionCard.focus === "function") {
+			lastFocusedSuggestionCard.focus();
+		}
+	}
+
+	async function saveSuggestionStatus(nextStatus) {
+		if (!window.CampusVoiceAdminState || !window.campusVoiceDesktop?.updateSuggestionStatus) {
+			updateModalFeedback("Database status updates are unavailable right now.", "error");
+			return;
+		}
+
+		const suggestion = getSuggestionById(activeSuggestionId);
+		if (!suggestion) {
+			updateModalFeedback("That suggestion is no longer available.", "error");
+			return;
+		}
+
+		const normalizedNextStatus = normalizeSuggestionStatus(nextStatus);
+		const currentStatus = normalizeSuggestionStatus(suggestion.status);
+		if (currentStatus === normalizedNextStatus) {
+			updateModalFeedback(`That suggestion is already ${getStatusLabel(normalizedNextStatus).toLowerCase()}.`, "info");
+			return;
+		}
+
+		const currentState = window.CampusVoiceAdminState.getState?.();
+		setModalBusy(true, `Saving ${getStatusLabel(normalizedNextStatus).toLowerCase()}...`);
+		try {
+			const response = await window.campusVoiceDesktop.updateSuggestionStatus({
+				orgId: currentState?.organizationId,
+				suggestionId: suggestion.id,
+				status: normalizedNextStatus
+			});
+
+			if (!response?.ok || !response.state) {
+				throw new Error(response?.message || "Unable to save that status change.");
+			}
+
+			window.CampusVoiceAdminState.setLocalState?.(response.state, "suggestion-status-save");
+			updateModalFeedback(response.message || "Suggestion status updated.", "success");
+			closeSuggestionModal();
+		} catch (error) {
+			setModalBusy(false, error instanceof Error ? error.message : "Unable to save that status change.");
+			updateModalFeedback(error instanceof Error ? error.message : "Unable to save that status change.", "error");
+		}
+	}
+
+	// UPDATED: Build suggestion card with AI confidence badge
+	function buildSuggestionCard(suggestion) {
+		const category = escapeHtml(suggestion.category || "Uncategorized");
+		const status = normalizeSuggestionStatus(suggestion.status || "open");
+		const sentiment = normalize(suggestion.sentiment || "neutral");
+		const statusLabel = escapeHtml(suggestion.statusLabel || getStatusBadgeLabel(status));
+		const sentimentLabel = escapeHtml(suggestion.sentiment || "Neutral");
+		const text = escapeHtml(suggestion.text || "");
+		const time = escapeHtml(suggestion.time || suggestion.createdAt || "Just now");
+		const suggestionId = escapeHtml(suggestion.id || suggestion.trackingId || suggestion.tracking_id || "");
+		
+		// NEW: AI Confidence display
+		const confidence = suggestion.aiConfidence || suggestion.confidence || 0;
+		const confidenceFormatted = formatConfidence(confidence);
+		const confidenceClass = getConfidenceClass(confidence, currentRoutingThreshold);
+		const confidenceLabel = getConfidenceLabel(confidence);
+		
+		// NEW: Low confidence warning indicator
+		const isLowConfidence = confidence < currentRoutingThreshold;
+		const lowConfidenceBadge = isLowConfidence ? `<span class="confidence-warning-badge" title="${confidenceLabel}">⚠️ Needs Review</span>` : "";
+
+		return `
+			<button type="button" class="admin-suggestion-card ${isLowConfidence ? 'needs-review' : ''}" data-suggestion-id="${suggestionId}" data-category="${category}" data-status="${status}" data-sentiment="${sentiment}" data-confidence="${confidence}" data-text="${escapeHtml(suggestion.text || "")}" aria-label="Open suggestion from ${category} submitted ${time}">
+				<div class="admin-suggestion-top">
+					<span>${time}</span>
+					<span class="admin-suggestion-category">#${category}</span>
+				</div>
+				<p>${text}</p>
+				<div class="admin-suggestion-bottom">
+					<span class="status-pill status-pill--${status === "resolved" ? "done" : status}">${statusLabel}</span>
+					<span class="admin-suggestion-sentiment admin-suggestion-sentiment--${sentiment}">${sentimentLabel}</span>
+					<span class="confidence-pill ${confidenceClass}" title="${confidenceLabel}">🤖 ${confidenceFormatted}</span>
+					${lowConfidenceBadge}
+				</div>
+			</button>
+		`;
+	}
+
+	function renderSuggestionCards(state) {
+		const suggestions = Array.isArray(state?.suggestions) ? state.suggestions : [];
+		suggestionIndex = new Map(suggestions.map((suggestion) => [String(suggestion.id || suggestion.trackingId), suggestion]));
+		const emptyMarkup = '<div class="admin-empty-state" id="suggestionEmptyState">No suggestions yet. New submissions will appear here.</div>';
+		const cardsMarkup = suggestions.map(buildSuggestionCard).join("");
+		suggestionBoard.innerHTML = `${cardsMarkup}${emptyMarkup}`;
+		suggestionEmptyState = document.getElementById("suggestionEmptyState");
+
+		if (suggestionModalElements && suggestionModalElements.overlay.classList.contains("is-open") && activeSuggestionId) {
+			renderSuggestionModal(getSuggestionById(activeSuggestionId));
+		}
+	}
+
+	function syncMetaCounts(state) {
+		if (!state) return;
+
+		if (suggestionTotalCount) {
+			suggestionTotalCount.textContent = `${state.suggestions.length} total`;
+		}
+
+		if (suggestionOpenCount) {
+			const openCount = state.suggestions.filter((suggestion) => normalizeSuggestionStatus(suggestion.status) === "open").length;
+			suggestionOpenCount.textContent = `${openCount} open`;
+		}
+
+		if (suggestionResolvedCount) {
+			const resolvedCount = state.suggestions.filter((suggestion) => normalizeSuggestionStatus(suggestion.status) === "resolved").length;
+			suggestionResolvedCount.textContent = `${resolvedCount} resolved`;
+		}
+	}
+
+	function syncCategoryOptions(state) {
+		if (!categoryFilter || !state) return;
+
+		const selectedValue = categoryFilter.value;
+		const categoryNames = Array.from(new Set([
+			...state.categories.map((category) => category.name),
+			...state.suggestions.map((suggestion) => suggestion.category)
+		])).filter(Boolean);
+
+		categoryFilter.innerHTML = [
+			'<option value="all">All Categories</option>',
+			...categoryNames.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
+		].join("");
+
+		if (categoryNames.includes(selectedValue) || selectedValue === "all") {
+			categoryFilter.value = selectedValue;
+		}
+	}
+
+	// UPDATED: Filter including low confidence
+	function updateSuggestionBoardVisibility() {
+		const searchValue = normalize(suggestionSearch ? suggestionSearch.value : "");
+		const categoryValue = normalize(categoryFilter ? categoryFilter.value : "all");
+		const statusValue = normalize(statusFilter ? statusFilter.value : "all");
+		const sentimentValue = normalize(sentimentFilter ? sentimentFilter.value : "all");
+		const lowConfidenceValue = getLowConfidenceFilterValue();
+		const cards = getCards();
+		let visibleCount = 0;
+
+		cards.forEach((card) => {
+			const cardText = normalize(card.dataset.text || "");
+			const fullText = normalize(card.textContent || "");
+			const cardCategory = normalize(card.dataset.category);
+			const cardStatus = normalize(card.dataset.status);
+			const cardSentiment = normalize(card.dataset.sentiment);
+			const cardConfidence = Number(card.dataset.confidence) || 0;
+			
+			// NEW: Low confidence filter
+			let matchesLowConfidence = true;
+			if (lowConfidenceValue === "low-only") {
+				matchesLowConfidence = cardConfidence < currentRoutingThreshold;
+			} else if (lowConfidenceValue === "high-only") {
+				matchesLowConfidence = cardConfidence >= currentRoutingThreshold;
+			}
+
+			const matchesSearch = !searchValue || cardText.includes(searchValue) || fullText.includes(searchValue);
+			const matchesCategory = categoryValue === "all" || cardCategory === categoryValue;
+			const matchesStatus = statusValue === "all" || cardStatus === statusValue;
+			const matchesSentiment = sentimentValue === "all" || cardSentiment === sentimentValue;
+			const isVisible = matchesSearch && matchesCategory && matchesStatus && matchesSentiment && matchesLowConfidence;
+
+			card.hidden = !isVisible;
+			card.style.display = isVisible ? "" : "none";
+			if (isVisible) {
+				visibleCount += 1;
+			}
+		});
+
+		if (suggestionEmptyState) {
+			const hasSuggestions = cards.length > 0;
+			suggestionEmptyState.hidden = hasSuggestions && visibleCount !== 0;
+			suggestionEmptyState.textContent = hasSuggestions
+				? "No suggestions match the current search or filters."
+				: "No suggestions yet. New submissions will appear here.";
+			suggestionEmptyState.style.display = hasSuggestions && visibleCount !== 0 ? "none" : "";
+		}
+	}
+
+	function setSuggestionViewMode(mode) {
+		suggestionBoard.classList.toggle("is-grid", mode === "grid");
+		suggestionBoard.classList.toggle("is-list", mode !== "grid");
+
+		viewToggleButtons.forEach((button) => {
+			const isActive = button.dataset.viewMode === mode;
+			button.classList.toggle("is-active", isActive);
+		});
+	}
+
+	buildSuggestionModal();
+
+	if (suggestionSearch) {
+		suggestionSearch.addEventListener("input", updateSuggestionBoardVisibility);
+		suggestionSearch.addEventListener("search", updateSuggestionBoardVisibility);
+		suggestionSearch.addEventListener("keyup", updateSuggestionBoardVisibility);
+	}
+
+	if (categoryFilter) {
+		categoryFilter.addEventListener("change", updateSuggestionBoardVisibility);
+	}
+
+	if (statusFilter) {
+		statusFilter.addEventListener("change", updateSuggestionBoardVisibility);
+	}
+
+	if (sentimentFilter) {
+		sentimentFilter.addEventListener("change", updateSuggestionBoardVisibility);
+	}
+
+	// NEW: Low confidence filter listener
+	if (lowConfidenceFilter) {
+		lowConfidenceFilter.addEventListener("change", updateSuggestionBoardVisibility);
+	}
+
+	viewToggleButtons.forEach((button) => {
+		button.addEventListener("click", () => {
+			setSuggestionViewMode(button.dataset.viewMode);
+		});
+	});
+
+	suggestionBoard.addEventListener("click", (event) => {
+		const card = event.target.closest(".admin-suggestion-card");
+		if (!card || !suggestionBoard.contains(card)) {
+			return;
+		}
+
+		openSuggestionModal(card.dataset.suggestionId, card);
+	});
+
+	if (window.CampusVoiceAdminState) {
+		window.CampusVoiceAdminState.subscribe((state) => {
+			renderSuggestionCards(state);
+			syncMetaCounts(state);
+			syncCategoryOptions(state);
+			updateSuggestionBoardVisibility();
+			if (suggestionModalElements && suggestionModalElements.overlay.classList.contains("is-open") && activeSuggestionId) {
+				renderSuggestionModal(getSuggestionById(activeSuggestionId));
+			}
+		});
+	}
+
+	renderSuggestionCards(window.CampusVoiceAdminState?.getState?.());
+	setSuggestionViewMode("list");
+	updateSuggestionBoardVisibility();
+	
+	// NEW: Load AI rules for threshold
+	loadAIRulesForFilter();
+	
+	suggestionPageInitialized = true;
+	return true;
+}
+
+const initializedImmediately = initAdminSuggestionPage();
+
+if (!initializedImmediately) {
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", initAdminSuggestionPage, { once: true });
+	}
+
+	window.addEventListener("load", initAdminSuggestionPage, { once: true });
+
+	const initRetryTimer = window.setInterval(() => {
+		if (initAdminSuggestionPage()) {
+			window.clearInterval(initRetryTimer);
+		}
+	}, 250);
+
+	window.setTimeout(() => {
+		window.clearInterval(initRetryTimer);
+	}, 5000);
+}
