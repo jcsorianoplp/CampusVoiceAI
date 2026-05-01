@@ -13,21 +13,111 @@ const topCategoryValue = document.getElementById("publicTopCategoryValue");
 const publicCategoryBreakdown = document.getElementById("publicCategoryBreakdown");
 const publicActivityCard = document.getElementById("publicActivityCard");
 
-const rangeData = {
-	"7": {
-		labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-		submissions: [52, 61, 44, 58, 66, 48, 56],
-		resolved: [36, 41, 30, 39, 47, 34, 40]
-	},
-	"30": {
-		labels: ["W1", "W2", "W3", "W4", "W5", "W6", "W7"],
-		submissions: [38, 45, 55, 62, 58, 69, 74],
-		resolved: [24, 28, 35, 42, 39, 48, 51]
+function escapeHtml(value) {
+	return String(value ?? "")
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/\"/g, "&quot;")
+		.replace(/'/g, "&#39;");
+}
+
+function getSuggestionTimestamp(suggestion) {
+	const candidates = [suggestion?.createdAtIso, suggestion?.createdAt, suggestion?.time];
+	for (const candidate of candidates) {
+		if (!candidate) {
+			continue;
+		}
+
+		const value = new Date(candidate);
+		if (!Number.isNaN(value.getTime())) {
+			return value;
+		}
 	}
-};
+
+	return null;
+}
+
+function createEmptyTrendState(labelCount) {
+	const labels = Array.from({ length: labelCount }, (_, index) => (labelCount === 7 ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index] : `W${index + 1}`));
+	return {
+		labels,
+		submissions: Array(labelCount).fill(0),
+		resolved: Array(labelCount).fill(0)
+	};
+}
+
+function buildTrendData(state, rangeKey) {
+	const suggestions = Array.isArray(state?.suggestions) ? state.suggestions : [];
+	if (rangeKey === "30") {
+		const bucketCount = 7;
+		const bucketState = createEmptyTrendState(bucketCount);
+		const spanDays = 30;
+		const now = new Date();
+
+		suggestions.forEach((suggestion) => {
+			const timestamp = getSuggestionTimestamp(suggestion);
+			if (!timestamp) {
+				return;
+			}
+
+			const diffDays = Math.floor((now - timestamp) / (24 * 60 * 60 * 1000));
+			if (diffDays < 0 || diffDays >= spanDays) {
+				return;
+			}
+
+			const bucketIndex = Math.min(bucketCount - 1, Math.floor((diffDays / spanDays) * bucketCount));
+			bucketState.submissions[bucketIndex] += 1;
+			if (String(suggestion.status || "").toLowerCase() === "resolved") {
+				bucketState.resolved[bucketIndex] += 1;
+			}
+		});
+
+		return bucketState;
+	}
+
+	const bucketCount = 7;
+	const bucketState = createEmptyTrendState(bucketCount);
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+
+	bucketState.labels = Array.from({ length: bucketCount }, (_, index) => {
+		const day = new Date(today);
+		day.setDate(today.getDate() - (bucketCount - 1 - index));
+		return new Intl.DateTimeFormat([], { weekday: "short" }).format(day);
+	});
+
+	suggestions.forEach((suggestion) => {
+		const timestamp = getSuggestionTimestamp(suggestion);
+		if (!timestamp) {
+			return;
+		}
+
+		const bucketDay = new Date(timestamp);
+		bucketDay.setHours(0, 0, 0, 0);
+		const diffDays = Math.floor((bucketDay - today) / (24 * 60 * 60 * 1000));
+		const bucketIndex = diffDays + (bucketCount - 1);
+		if (bucketIndex < 0 || bucketIndex >= bucketCount) {
+			return;
+		}
+
+		bucketState.submissions[bucketIndex] += 1;
+		if (String(suggestion.status || "").toLowerCase() === "resolved") {
+			bucketState.resolved[bucketIndex] += 1;
+		}
+	});
+
+	return bucketState;
+}
 
 function renderTrendChart(data) {
 	if (!publicTrendChart) {
+		return;
+	}
+
+	const totals = (data.submissions || []).reduce((sum, item) => sum + item, 0);
+	if (!totals) {
+		publicTrendChart.innerHTML = '<div class="admin-trend-empty">No submission data yet.</div>';
 		return;
 	}
 
@@ -84,6 +174,10 @@ function renderBreakdown(state) {
 	}
 
 	const totals = getCategoryTotals(state);
+	if (!totals.length) {
+		publicCategoryBreakdown.innerHTML = '<li class="admin-category-empty">No category data yet.</li>';
+		return;
+	}
 	const totalVolume = totals.reduce((sum, category) => sum + category.volume, 0) || 1;
 
 	publicCategoryBreakdown.innerHTML = totals.slice(0, 5).map((category) => {
@@ -103,7 +197,13 @@ function renderActivity(state) {
 		return;
 	}
 
-	feedContainer.innerHTML = state.publicFeed.map((item) => `
+	const feedItems = Array.isArray(state.publicFeed) ? state.publicFeed : [];
+	if (!feedItems.length) {
+		feedContainer.innerHTML = '<div class="admin-feed-empty">No public updates yet.</div>';
+		return;
+	}
+
+	feedContainer.innerHTML = feedItems.map((item) => `
 		<article class="admin-feed-item">
 			<div class="admin-feed-top"><span>${item.time}</span><span>#${item.category}</span></div>
 			<p>${item.text}</p>
@@ -113,7 +213,7 @@ function renderActivity(state) {
 }
 
 function applyRange(state, rangeKey) {
-	const data = rangeData[rangeKey] || rangeData["7"];
+	const data = buildTrendData(state, rangeKey);
 	const totals = getCategoryTotals(state);
 	const topCategory = totals[0];
 	const resolvedCount = state.suggestions.filter((suggestion) => suggestion.status === "resolved").length;
@@ -123,7 +223,7 @@ function applyRange(state, rangeKey) {
 
 	if (totalValue) totalValue.textContent = String(state.suggestions.length);
 	if (resolutionValue) resolutionValue.textContent = `${Math.round((resolvedCount / Math.max(1, state.suggestions.length)) * 100)}%`;
-	if (responseTimeValue) responseTimeValue.textContent = `${(Math.max(1.8, 4.5 - responseAverage / 40)).toFixed(1)}d`;
+	if (responseTimeValue) responseTimeValue.textContent = `${(state.categories.length ? Math.max(1.8, 4.5 - responseAverage / 40) : 0).toFixed(1)}d`;
 	if (topCategoryValue) topCategoryValue.textContent = topCategory ? topCategory.name.replace(/^Campus\s+/i, "") : "No data";
 
 	renderTrendChart(data);

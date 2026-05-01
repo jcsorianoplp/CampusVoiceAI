@@ -70,11 +70,13 @@
 	overflow: auto;
 	padding-right: 4px;
 	align-content: start;
+	align-items: start;
 }
 
 .admin-public-grid .admin-card {
 	height: auto;
 	min-height: 0;
+	align-content: start;
 }
 
 .admin-public-grid .admin-card h3 {
@@ -84,6 +86,7 @@
 #publicActivityCard,
 #publicControlCard {
 	height: 100%;
+	align-content: start;
 }
 
 #publicControlCard {
@@ -215,6 +218,35 @@
 	font-family: "Space Grotesk", sans-serif;
 	font-size: 0.98rem;
 	color: #1f5b77;
+}
+
+.admin-category-empty,
+.admin-feed-empty,
+.admin-trend-empty {
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-start;
+	min-height: 88px;
+	padding: 14px 16px;
+	border-radius: 14px;
+	border: 1px dashed #c4dbea;
+	background: rgba(255, 255, 255, 0.8);
+	color: #5f7890;
+	font-weight: 700;
+	text-align: left;
+	line-height: 1.45;
+}
+
+.admin-trend-empty {
+	min-height: 190px;
+}
+
+.admin-feed-empty {
+	min-height: 130px;
+}
+
+.admin-category-empty {
+	list-style: none;
 }
 
 .admin-feed--public {

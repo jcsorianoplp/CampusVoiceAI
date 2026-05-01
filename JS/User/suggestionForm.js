@@ -7,11 +7,29 @@ const impactLevelInput = document.getElementById("impactLevel");
 const locationTagInput = document.getElementById("locationTag");
 const suggestedSolutionInput = document.getElementById("suggestedSolution");
 const submitFeedback = document.getElementById("submitFeedback");
+const backToAdminButton = document.getElementById("backToAdminButton");
 const publicTotalValue = document.getElementById("publicTotalValue");
 const publicTopCategoryValue = document.getElementById("publicTopCategoryValue");
 const publicResolutionValue = document.getElementById("publicResolutionValue");
 const publicTrendChart = document.getElementById("publicTrendChart");
 const publicActivityFeed = document.getElementById("publicActivityFeed");
+const publicAiIntegrationList = document.getElementById("publicAiIntegrationList");
+
+const brandTextNodes = Array.from(document.querySelectorAll(".wireframe-brand-text"));
+const headlineStrongNodes = Array.from(document.querySelectorAll(".wireframe-headline strong"));
+
+function syncOrganizationCopy(state) {
+	const organizationName = String(state?.organizationName || "Computer Society").trim() || "Computer Society";
+	const headlineParts = organizationName.toUpperCase().split(/\s+/).filter(Boolean);
+
+	brandTextNodes.forEach((node) => {
+		node.textContent = organizationName;
+	});
+
+	headlineStrongNodes.forEach((node, index) => {
+		node.textContent = headlineParts[index % Math.max(1, headlineParts.length)] || organizationName.toUpperCase();
+	});
+}
 
 let activeTab = tabButtons.find((button) => button.classList.contains("is-active"))?.dataset.tabTarget || tabButtons[0]?.dataset.tabTarget || "suggestions";
 let transitionToken = 0;
@@ -44,6 +62,28 @@ function getResponseRate(state) {
 	return Math.round((resolvedCount / total) * 100);
 }
 
+function fitPublicMetricText(element) {
+	if (!element) {
+		return;
+	}
+
+	element.style.fontSize = "";
+	const computed = window.getComputedStyle(element);
+	const baseFontSize = Number.parseFloat(computed.fontSize || "0") || 16;
+	const minFontSize = 11;
+	let fontSize = baseFontSize;
+
+	while (fontSize >= minFontSize) {
+		element.style.fontSize = `${fontSize}px`;
+		if (element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight) {
+			return;
+		}
+		fontSize -= 1;
+	}
+
+	element.style.fontSize = `${minFontSize}px`;
+}
+
 function inferCategory(text) {
 	const lower = String(text || "").toLowerCase();
 	const rules = [
@@ -69,6 +109,19 @@ function inferSentiment(text) {
 	}
 
 	return "Neutral";
+}
+
+function normalizeImpactLevel(value) {
+	const level = String(value || "medium").trim().toLowerCase();
+	if (level === "high") {
+		return "high";
+	}
+
+	if (level === "low") {
+		return "low";
+	}
+
+	return "medium";
 }
 
 function buildPublicFeedEntry(text, category) {
@@ -97,6 +150,7 @@ function renderPublicPanel(state) {
 
 	if (publicTopCategoryValue) {
 		publicTopCategoryValue.textContent = topCategory.replace(/^Campus\s+/i, "");
+		window.requestAnimationFrame(() => fitPublicMetricText(publicTopCategoryValue));
 	}
 
 	if (publicResolutionValue) {
@@ -117,6 +171,27 @@ function renderPublicPanel(state) {
 				`;
 			}).join("")
 			: '<div class="public-feed-empty">No public activity yet.</div>';
+	}
+
+	if (publicAiIntegrationList) {
+		const aiInsights = Array.isArray(state.aiInsights) ? state.aiInsights : [];
+
+		if (!aiInsights.length) {
+			publicAiIntegrationList.className = "public-ai-empty";
+			publicAiIntegrationList.textContent = "No AI integration data yet. Connect a model, rule engine, or live feed here later.";
+		} else {
+			publicAiIntegrationList.className = "public-ai-list";
+			publicAiIntegrationList.innerHTML = aiInsights.slice(0, 4).map((item) => {
+				const title = String(item.title || item.label || item.name || "AI Insight");
+				const summary = String(item.summary || item.detail || item.value || "Live AI output will appear here.");
+				return `
+					<article class="public-ai-item">
+						<div class="public-ai-item-title">${title}</div>
+						<div class="public-ai-item-copy">${summary}</div>
+					</article>
+				`;
+			}).join("");
+		}
 	}
 
 	if (publicActivityFeed) {
@@ -238,11 +313,17 @@ if (suggestionInput && charCount) {
 	updateCount();
 }
 
+if (backToAdminButton) {
+	backToAdminButton.addEventListener("click", () => {
+		window.location.href = "../Admin/AdminDashboard.html";
+	});
+}
+
 if (suggestionForm && suggestionInput) {
-	suggestionForm.addEventListener("submit", (event) => {
+	suggestionForm.addEventListener("submit", async (event) => {
 		event.preventDefault();
 		const suggestionText = suggestionInput.value.trim();
-		const impactLevel = impactLevelInput?.value || "medium";
+		const impactLevel = normalizeImpactLevel(impactLevelInput?.value);
 		const locationTag = locationTagInput?.value || "General";
 		const suggestedSolution = suggestedSolutionInput?.value.trim() || "";
 		const trackingId = createTrackingId();
@@ -250,6 +331,10 @@ if (suggestionForm && suggestionInput) {
 			suggestionInput.focus();
 			return;
 		}
+
+			if (submitFeedback) {
+				submitFeedback.textContent = "Saving suggestion to the database...";
+			}
 
 		if (window.CampusVoiceAdminState) {
 			const category = inferCategory(suggestionText);
@@ -274,6 +359,13 @@ if (suggestionForm && suggestionInput) {
 				state.lastUpdated = `Submitted: ${new Date().toLocaleString()}`;
 				return state;
 			}, "public-suggestion-submit");
+			const saveResult = await window.CampusVoiceAdminState.flushPendingBackendSave?.();
+			if (!saveResult?.ok) {
+				if (submitFeedback) {
+					submitFeedback.textContent = `Database save failed: ${saveResult?.message || "Unknown error"}`;
+				}
+				return;
+			}
 		}
 
 		suggestionInput.value = "";
@@ -290,7 +382,7 @@ if (suggestionForm && suggestionInput) {
 			charCount.textContent = "0";
 		}
 		if (submitFeedback) {
-			submitFeedback.textContent = `Submitted successfully. Tracking ID: ${trackingId}`;
+			submitFeedback.textContent = `Saved to database successfully. Tracking ID: ${trackingId}`;
 		}
 
 		activateTab("public");
@@ -299,8 +391,10 @@ if (suggestionForm && suggestionInput) {
 
 if (window.CampusVoiceAdminState) {
 	window.CampusVoiceAdminState.subscribe((state) => {
+		syncOrganizationCopy(state);
 		renderPublicPanel(state);
 	});
 	const initialState = window.CampusVoiceAdminState.getState();
+	syncOrganizationCopy(initialState);
 	renderPublicPanel(initialState);
 }

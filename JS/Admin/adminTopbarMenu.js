@@ -169,8 +169,17 @@
 		actionItems.forEach((item) => {
 			item.addEventListener("click", () => {
 				if (item.classList.contains("admin-profile-item--logout")) {
-					window.CampusVoiceAdminAuth?.logout();
-					window.location.replace("./Login.html");
+					const finishLogout = () => {
+						window.CampusVoiceAdminAuth?.logout();
+						window.location.replace("./Login.html");
+					};
+					const flushPromise = window.CampusVoiceAdminState?.flushPendingBackendSave?.();
+
+					if (flushPromise && typeof flushPromise.finally === "function") {
+						flushPromise.finally(finishLogout).catch(finishLogout);
+					} else {
+						finishLogout();
+					}
 					return;
 				}
 

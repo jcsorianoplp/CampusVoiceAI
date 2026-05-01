@@ -35,8 +35,8 @@
 
 			<div class="admin-sidebar-card">
 				<div class="admin-sidebar-card-label">Active Organization</div>
-				<div class="admin-sidebar-card-value">Computer Society</div>
-				<div class="admin-sidebar-card-note">Campus Voice AI</div>
+				<div class="admin-sidebar-card-value" id="dashboardOrganizationName">Loading...</div>
+				<div class="admin-sidebar-card-note" id="dashboardOrganizationRole">Campus Voice AI</div>
 			</div>
 		</aside>
 
@@ -74,7 +74,7 @@
 					<div class="admin-link-generator">
 						<div class="admin-link-row">
 							<span class="admin-domain">campusvoice.ai/</span>
-							<input class="admin-link-input" id="generatedSlug" type="text" readonly />
+							<input class="admin-link-input" id="generatedSlug" type="text" readonly placeholder="Loading link..." />
 						</div>
 						<div class="admin-link-actions">
 							<button class="admin-primary-btn" id="regenerateLink" type="button">Generate New Link</button>
@@ -88,23 +88,23 @@
 				<section class="admin-stats-grid">
 					<article class="admin-stat-card">
 						<div class="admin-stat-label">Total Suggestions</div>
-						<div class="admin-stat-value" id="dashboardTotalSuggestions">124</div>
-						<div class="admin-stat-note"><span class="positive">↑ 12%</span> this week</div>
+						<div class="admin-stat-value" id="dashboardTotalSuggestions">0</div>
+						<div class="admin-stat-note"><span class="positive">Live</span> from database</div>
 					</article>
 					<article class="admin-stat-card">
 						<div class="admin-stat-label">Top Category</div>
-						<div class="admin-stat-value" id="dashboardTopCategory">Facilities</div>
-						<div class="admin-stat-note">32 suggestions</div>
+						<div class="admin-stat-value" id="dashboardTopCategory">No data</div>
+						<div class="admin-stat-note" id="dashboardTopCategoryCount">0 suggestions</div>
 					</article>
 					<article class="admin-stat-card">
 						<div class="admin-stat-label">Response Rate</div>
-						<div class="admin-stat-value" id="dashboardResponseRate">67%</div>
-						<div class="admin-stat-note"><span class="positive">↑ 2.1%</span> from last month</div>
+						<div class="admin-stat-value" id="dashboardResponseRate">0%</div>
+						<div class="admin-stat-note" id="dashboardResponseNote">Resolved suggestions</div>
 					</article>
 					<article class="admin-stat-card">
 						<div class="admin-stat-label">AI Accuracy</div>
-						<div class="admin-stat-value" id="dashboardAiAccuracy">94.7%</div>
-						<div class="admin-stat-note">Category matching</div>
+						<div class="admin-stat-value" id="dashboardAiAccuracy">0%</div>
+						<div class="admin-stat-note" id="dashboardAiAccuracyNote">Category matching</div>
 					</article>
 				</section>
 
@@ -116,26 +116,26 @@
 								<h3>Current activity at a glance</h3>
 							</div>
 							<div class="admin-mini-summary">
-								<span>Open: 38</span>
-								<span>In Progress: 22</span>
-								<span>Resolved: 64</span>
+								<span id="dashboardOpenCount">Open: 0</span>
+								<span id="dashboardProgressCount">In Progress: 0</span>
+								<span id="dashboardResolvedCount">Resolved: 0</span>
 							</div>
 						</div>
 							<div class="admin-snapshot-metrics" aria-label="Snapshot highlights">
 								<div class="admin-snapshot-metric">
 									<div class="admin-snapshot-metric-label">Needs attention</div>
-									<div class="admin-snapshot-metric-value">38 open</div>
-									<div class="admin-snapshot-metric-note">Oldest open item is waiting 3 hours</div>
+									<div class="admin-snapshot-metric-value" id="dashboardNeedsAttentionValue">0 open</div>
+									<div class="admin-snapshot-metric-note" id="dashboardNeedsAttentionNote">No open items yet</div>
 								</div>
 								<div class="admin-snapshot-metric">
 									<div class="admin-snapshot-metric-label">Hot category</div>
-									<div class="admin-snapshot-metric-value">Facilities</div>
-									<div class="admin-snapshot-metric-note">32 suggestions and still climbing</div>
+									<div class="admin-snapshot-metric-value" id="dashboardHotCategoryValue">No data</div>
+									<div class="admin-snapshot-metric-note" id="dashboardHotCategoryNote">No category activity yet</div>
 								</div>
 								<div class="admin-snapshot-metric">
 									<div class="admin-snapshot-metric-label">Follow-up pace</div>
-									<div class="admin-snapshot-metric-value">67% resolved</div>
-									<div class="admin-snapshot-metric-note">2.1% higher than last month</div>
+									<div class="admin-snapshot-metric-value" id="dashboardFollowUpValue">0% resolved</div>
+									<div class="admin-snapshot-metric-note" id="dashboardFollowUpNote">Resolution pace from current data</div>
 								</div>
 							</div>
 							<div class="admin-preview-box admin-preview-box--tight">

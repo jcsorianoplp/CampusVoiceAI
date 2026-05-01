@@ -283,6 +283,7 @@
 
 				const admin = result.admin;
 				window.CampusVoiceAdminAuth?.login(admin.username);
+				window.sessionStorage.setItem("campusvoice-admin-id", String(admin.id || ""));
 				window.sessionStorage.setItem("campusvoice-admin-role", admin.role || "OrgAdmin");
 				window.sessionStorage.setItem("campusvoice-admin-org-id", String(admin.orgId || ""));
 				window.sessionStorage.setItem("campusvoice-admin-org-name", admin.organizationName || "");

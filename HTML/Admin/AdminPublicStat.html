@@ -35,8 +35,8 @@
 
 			<div class="admin-sidebar-card">
 				<div class="admin-sidebar-card-label">Active Organization</div>
-				<div class="admin-sidebar-card-value">Computer Society</div>
-				<div class="admin-sidebar-card-note">Campus Voice AI</div>
+				<div class="admin-sidebar-card-value" id="publicStatsOrganizationName">Loading...</div>
+				<div class="admin-sidebar-card-note" id="publicStatsOrganizationRole">Campus Voice AI</div>
 			</div>
 		</aside>
 
@@ -83,22 +83,22 @@
 				<section class="admin-stats-grid admin-stats-grid--public">
 					<article class="admin-stat-card">
 						<div class="admin-stat-label">Total Public Submissions</div>
-						<div class="admin-stat-value" id="publicTotalValue">124</div>
+						<div class="admin-stat-value" id="publicTotalValue">0</div>
 						<div class="admin-stat-note">Visible in current period</div>
 					</article>
 					<article class="admin-stat-card">
 						<div class="admin-stat-label">Resolution Rate</div>
-						<div class="admin-stat-value" id="publicResolutionValue">67%</div>
+						<div class="admin-stat-value" id="publicResolutionValue">0%</div>
 						<div class="admin-stat-note">Shareable progress marker</div>
 					</article>
 					<article class="admin-stat-card">
 						<div class="admin-stat-label">Avg. Response Time</div>
-						<div class="admin-stat-value" id="publicResponseTimeValue">2.4d</div>
+						<div class="admin-stat-value" id="publicResponseTimeValue">0.0d</div>
 						<div class="admin-stat-note">Median first admin action</div>
 					</article>
 					<article class="admin-stat-card">
 						<div class="admin-stat-label">Top Concern</div>
-						<div class="admin-stat-value" id="publicTopCategoryValue">Facilities</div>
+						<div class="admin-stat-value" id="publicTopCategoryValue">No data</div>
 						<div class="admin-stat-note">Most submitted category</div>
 					</article>
 				</section>
@@ -117,34 +117,14 @@
 					<article class="admin-card" id="publicCategoryCard">
 						<div class="admin-panel-label">Category Breakdown</div>
 						<h3>Top concerns this period</h3>
-						<ul class="admin-category-breakdown" id="publicCategoryBreakdown">
-							<li><span>Campus Facilities</span><strong>32%</strong></li>
-							<li><span>Student Life</span><strong>21%</strong></li>
-							<li><span>Academic Services</span><strong>18%</strong></li>
-							<li><span>Admin Process</span><strong>16%</strong></li>
-							<li><span>Campus Safety</span><strong>13%</strong></li>
-						</ul>
+						<ul class="admin-category-breakdown" id="publicCategoryBreakdown"></ul>
 					</article>
 
 					<article class="admin-card" id="publicActivityCard">
 						<div class="admin-panel-label">Recent Public Activity</div>
 						<h3>Latest visible updates</h3>
 						<div class="admin-feed admin-feed--public">
-							<article class="admin-feed-item">
-								<div class="admin-feed-top"><span>Today</span><span>#Campus Facilities</span></div>
-								<p>Library airflow concern moved to In Progress and posted in public status.</p>
-								<div class="admin-feed-bottom"><span class="status-pill status-pill--progress">In Progress</span><span>Public</span></div>
-							</article>
-							<article class="admin-feed-item">
-								<div class="admin-feed-top"><span>Yesterday</span><span>#Student Life</span></div>
-								<p>Activity-week suggestion acknowledged and published in summary update.</p>
-								<div class="admin-feed-bottom"><span class="status-pill status-pill--open">Acknowledged</span><span>Public</span></div>
-							</article>
-							<article class="admin-feed-item">
-								<div class="admin-feed-top"><span>2 days ago</span><span>#Classroom</span></div>
-								<p>Projector issue marked resolved and reflected on the public dashboard.</p>
-								<div class="admin-feed-bottom"><span class="status-pill status-pill--done">Resolved</span><span>Public</span></div>
-							</article>
+							<div class="admin-feed-empty" id="publicActivityEmpty">No public updates yet.</div>
 						</div>
 					</article>
 
