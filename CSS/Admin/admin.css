@@ -412,7 +412,7 @@ a.admin-nav-item {
 	opacity: 0;
 	pointer-events: none;
 	transition: opacity 180ms ease;
-	z-index: 55;
+	z-index: 75;
 }
 
 .admin-account-overlay.is-open,
@@ -1422,8 +1422,43 @@ button.admin-suggestion-card:focus-visible {
 	display: grid;
 	gap: 9px;
 	max-height: 220px;
-	overflow: auto;
+	min-height: 220px;
+	overflow-y: auto;
+	overflow-x: hidden;
 	padding-right: 4px;
+	scrollbar-gutter: stable;
+}
+
+/* Admin-themed scrollbar to match public aesthetic */
+.admin-feed::-webkit-scrollbar,
+.admin-feed--public::-webkit-scrollbar,
+.admin-public-grid::-webkit-scrollbar {
+    width: 12px;
+}
+.admin-feed::-webkit-scrollbar-track,
+.admin-feed--public::-webkit-scrollbar-track,
+.admin-public-grid::-webkit-scrollbar-track {
+    background: transparent;
+}
+.admin-feed::-webkit-scrollbar-thumb,
+.admin-feed--public::-webkit-scrollbar-thumb,
+.admin-public-grid::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #cfeefb, #9fd9f1);
+    border-radius: 8px;
+    border: 3px solid rgba(255,255,255,0.6);
+}
+.admin-feed::-webkit-scrollbar-thumb:hover,
+.admin-feed--public::-webkit-scrollbar-thumb:hover,
+.admin-public-grid::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #9fd9f1, #6fc1e8);
+}
+
+/* Firefox */
+.admin-feed,
+.admin-feed--public,
+.admin-public-grid {
+    scrollbar-width: thin;
+    scrollbar-color: #9fd9f1 transparent;
 }
 
 .admin-feed-item {

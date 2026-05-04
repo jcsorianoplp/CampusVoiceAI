@@ -1,1 +1,51 @@
 @import url("./admin.css");
+
+.admin-suggestion-modal__delete-wrap {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 12px;
+}
+
+.admin-suggestion-modal__delete {
+	appearance: none;
+	border: 1px solid #e7f0f6;
+	background: linear-gradient(180deg, #ffffff, #f7fbff);
+	color: #b13f3f;
+	padding: 8px 12px;
+	border-radius: 12px;
+	font-weight: 800;
+	cursor: pointer;
+	box-shadow: 0 8px 18px rgba(35,73,97,0.06);
+}
+
+.admin-suggestion-modal__delete:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.admin-btn {
+	border: 1px solid #cfe1ed;
+	background: rgba(255,255,255,0.98);
+	padding: 8px 12px;
+	border-radius: 10px;
+	font-weight: 800;
+	color: #274f68;
+	cursor: pointer;
+}
+
+.admin-btn--danger {
+	background: linear-gradient(180deg, #fff6f6, #fff1f1);
+	border-color: #f3c6c6;
+	color: #9f2f2f;
+}
+
+.suggestion-confirm-overlay .admin-feedback-modal {
+	width: min(420px, calc(100vw - 32px));
+	text-align: left;
+}
+
+.suggestion-confirm-modal .admin-feedback-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}

@@ -151,6 +151,11 @@ function initAdminSuggestionPage() {
 			button.textContent = getStatusLabel(targetStatus);
 		});
 
+		if (suggestionModalElements.deleteButton) {
+			suggestionModalElements.deleteButton.disabled = modalBusy || !hasSuggestion;
+			suggestionModalElements.deleteButton.hidden = !hasSuggestion;
+		}
+
 		dialog.setAttribute("data-has-suggestion", String(hasSuggestion));
 	}
 
@@ -168,18 +173,24 @@ function initAdminSuggestionPage() {
 		if (suggestionModalElements) {
 			suggestionModalElements.overlay.classList.toggle("is-busy", nextBusy);
 			suggestionModalElements.closeButton.disabled = nextBusy;
+			const activeSuggestion = getSuggestionById(activeSuggestionId);
 			suggestionModalElements.statusButtons.forEach((button) => {
 				const targetStatus = normalizeSuggestionStatus(button.dataset.statusTarget);
-				const activeSuggestion = getSuggestionById(activeSuggestionId);
 				const isActive = Boolean(activeSuggestion) && normalizeSuggestionStatus(activeSuggestion.status) === targetStatus;
 				button.disabled = nextBusy || !activeSuggestion || isActive;
 			});
+
+			if (suggestionModalElements.deleteButton) {
+				suggestionModalElements.deleteButton.disabled = nextBusy || !activeSuggestion;
+			}
 		}
 
 		if (typeof message === "string") {
 			updateModalFeedback(message, nextBusy ? "saving" : "info");
 		}
 	}
+
+            
 
 	function buildSuggestionModal() {
 		if (suggestionModalElements) {
@@ -212,6 +223,9 @@ function initAdminSuggestionPage() {
 							<span id="suggestionModalConfidence"></span>
 							<span id="suggestionModalTracking"></span>
 						</div>
+						<div class="admin-suggestion-modal__delete-wrap">
+							<button class="admin-suggestion-modal__delete" type="button" aria-label="Delete suggestion">Delete</button>
+						</div>
 					</section>
 					<section class="admin-suggestion-modal__panel">
 						<div class="admin-suggestion-modal__section-label">Status controls</div>
@@ -231,7 +245,8 @@ function initAdminSuggestionPage() {
 		suggestionModalElements = {
 			overlay,
 			dialog: overlay.querySelector(".admin-suggestion-modal"),
-			closeButton: overlay.querySelector(".admin-suggestion-modal__close"),
+				closeButton: overlay.querySelector(".admin-suggestion-modal__close"),
+				deleteButton: overlay.querySelector(".admin-suggestion-modal__delete"),
 			title: overlay.querySelector("#suggestionModalTitle"),
 			subtitle: overlay.querySelector("#suggestionModalSubtitle"),
 			statusBadge: overlay.querySelector("#suggestionModalStatus"),
@@ -251,6 +266,69 @@ function initAdminSuggestionPage() {
 			closeSuggestionModal();
 		});
 
+			suggestionModalElements.deleteButton.addEventListener("click", () => {
+				void deleteActiveSuggestion();
+			});
+
+			function buildConfirmDialog() {
+				if (document.getElementById("suggestionConfirmOverlay")) return null;
+
+				const confirmOverlay = document.createElement("div");
+				confirmOverlay.id = "suggestionConfirmOverlay";
+				confirmOverlay.className = "admin-feedback-overlay suggestion-confirm-overlay";
+				confirmOverlay.innerHTML = `
+					<div class="admin-feedback-modal suggestion-confirm-modal" role="dialog" aria-modal="true">
+						<div class="admin-feedback-title">Confirm delete</div>
+						<div class="admin-feedback-copy">Delete this suggestion? This action cannot be undone.</div>
+						<div class="admin-feedback-actions">
+							<button type="button" class="suggestion-confirm-cancel admin-btn">Cancel</button>
+							<button type="button" class="suggestion-confirm-ok admin-btn admin-btn--danger">Delete</button>
+						</div>
+					</div>
+				`;
+
+				document.body.appendChild(confirmOverlay);
+				return confirmOverlay;
+			}
+
+			function showConfirmDialog() {
+				return new Promise((resolve) => {
+					let overlay = buildConfirmDialog();
+					if (!overlay) {
+						overlay = document.getElementById("suggestionConfirmOverlay");
+						if (!overlay) {
+							resolve(false);
+							return;
+						}
+					}
+
+					overlay.classList.add("is-open");
+					const ok = overlay.querySelector(".suggestion-confirm-ok");
+					const cancel = overlay.querySelector(".suggestion-confirm-cancel");
+
+					function cleanup(result) {
+						overlay.classList.remove("is-open");
+						ok.removeEventListener("click", onOk);
+						cancel.removeEventListener("click", onCancel);
+						setTimeout(() => {
+							overlay.remove();
+						}, 180);
+						resolve(result);
+					}
+
+					function onOk() {
+						cleanup(true);
+					}
+
+					function onCancel() {
+						cleanup(false);
+					}
+
+					ok.addEventListener("click", onOk);
+					cancel.addEventListener("click", onCancel);
+				});
+			}
+
 		overlay.addEventListener("click", (event) => {
 			if (event.target === overlay && !modalBusy) {
 				closeSuggestionModal();
@@ -262,6 +340,45 @@ function initAdminSuggestionPage() {
 				void saveSuggestionStatus(button.dataset.statusTarget);
 			});
 		});
+
+			async function deleteActiveSuggestion() {
+				if (!window.CampusVoiceAdminState || !window.campusVoiceDesktop?.deleteSuggestion) {
+					updateModalFeedback("Database delete is unavailable right now.", "error");
+					return;
+				}
+
+				const suggestion = getSuggestionById(activeSuggestionId);
+				if (!suggestion) {
+					updateModalFeedback("That suggestion is no longer available.", "error");
+					return;
+				}
+
+				const confirmed = await showConfirmDialog();
+				if (!confirmed) {
+					setModalBusy(false);
+					return;
+				}
+
+				const currentState = window.CampusVoiceAdminState.getState?.();
+				setModalBusy(true, "Deleting suggestion...");
+				try {
+					const response = await window.campusVoiceDesktop.deleteSuggestion({
+						orgId: currentState?.organizationId,
+						suggestionId: suggestion.id
+					});
+
+					if (!response?.ok || !response.state) {
+						throw new Error(response?.message || "Unable to delete that suggestion.");
+					}
+
+					window.CampusVoiceAdminState.setLocalState?.(response.state, "suggestion-delete");
+					updateModalFeedback(response.message || "Suggestion deleted.", "success");
+					closeSuggestionModal();
+				} catch (error) {
+					setModalBusy(false, error instanceof Error ? error.message : "Unable to delete that suggestion.");
+					updateModalFeedback(error instanceof Error ? error.message : "Unable to delete that suggestion.", "error");
+				}
+			}
 
 		document.addEventListener("keydown", (event) => {
 			if (event.key !== "Escape" || !suggestionModalElements?.overlay.classList.contains("is-open")) {
@@ -374,6 +491,7 @@ function initAdminSuggestionPage() {
 			</button>
 		`;
 	}
+
 
 	function renderSuggestionCards(state) {
 		const suggestions = Array.isArray(state?.suggestions) ? state.suggestions : [];

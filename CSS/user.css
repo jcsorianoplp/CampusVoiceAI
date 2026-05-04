@@ -214,6 +214,20 @@ body.suggestion-wireframe-page {
 
 .wireframe-panel--form {
 	grid-template-rows: auto auto auto auto auto;
+	/* Match visible height with the public-stats panel so tabs don't resize page */
+	max-height: calc(100vh - 160px);
+	overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-gutter: stable;
+}
+
+.wireframe-panel--stats {
+	grid-template-rows: auto auto auto auto auto;
+	/* Keep public stats fixed and scroll internally so the tab stays put */
+	max-height: calc(100vh - 160px);
+	overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-gutter: stable;
 }
 
 .field-grid {
@@ -404,7 +418,7 @@ body.suggestion-wireframe-page {
 	padding-top: 14px;
 	width: 100%;
 	justify-self: stretch;
-	overflow: hidden;
+	min-height: 0;
 }
 
 .stats-grid {
@@ -488,28 +502,31 @@ body.suggestion-wireframe-page {
 }
 
 .bar-chart {
-	height: 194px;
+	height: auto;
 	display: grid;
-	grid-template-columns: repeat(6, minmax(0, 1fr));
-	align-items: end;
-	gap: 12px;
-	padding: 12px 10px 0;
+	grid-template-columns: 1fr;
+	gap: 8px;
+	padding: 0;
+	max-height: none;
 }
 
 .bar-group {
 	display: grid;
-	justify-items: center;
-	align-content: end;
-	gap: 4px;
-	height: 100%;
-	font-size: 0.45rem;
-	color: #9da0a3;
+	gap: 8px;
+	height: auto;
+	font-size: 0.80rem;
+	color: #1f5b77;
 	font-weight: 700;
+	padding: 10px 12px;
+	border: 1px solid #d8e8f3;
+	background: rgba(248, 253, 255, 0.92);
+	border-radius: 14px;
 }
 
 .bar {
 	width: 100%;
-	border-radius: 6px 6px 3px 3px;
+	height: 16px;
+	border-radius: 6px;
 }
 
 .bar--events { height: 150px; background: #4fd12f; }
@@ -578,8 +595,11 @@ body.suggestion-wireframe-page {
 	border: 1px solid #97d0e3;
 	border-radius: 10px;
 	padding: 12px;
-	min-height: 170px;
-	overflow: hidden;
+	max-height: 220px;
+	min-height: 220px;
+	overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-gutter: stable;
 	background: #fff;
 }
 
@@ -683,25 +703,100 @@ body.suggestion-wireframe-page {
 }
 
 .public-bar-group {
-	display: grid;
-	justify-items: center;
-	align-content: end;
-	gap: 4px;
-	height: 100%;
-	font-size: 0.6rem;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 12px;
+	border: 1px solid #d8e8f3;
+	background: rgba(248, 253, 255, 0.92);
+	border-radius: 14px;
 	font-weight: 700;
-	color: #7f8b93;
+	color: #1f5b77;
+	font-size: 0.80rem;
+	min-height: 48px;
+}
+
+.public-bar-group span {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .public-bar {
-	width: 100%;
-	border-radius: 6px 6px 3px 3px;
-	min-height: 12px;
-	transition: height 280ms ease, transform 280ms ease;
+	width: auto;
+	flex: 1;
+	height: 16px;
+	border-radius: 6px;
+	min-width: 40px;
+	min-height: 16px;
+	transition: height 280ms ease, width 280ms ease;
 }
 
 .public-bar:hover {
-	transform: translateY(-2px);
+	transform: none;
+	filter: brightness(1.1);
+}
+
+/* Themed scrollbars for public panels and form panels */
+.wireframe-panel--form,
+.wireframe-panel--stats,
+.activity-table-wrap,
+.bar-chart,
+.admin-feed,
+.admin-feed--public {
+	/* ensure the thumb has space and doesn't overlap inner card borders */
+	padding-right: 6px;
+}
+
+/* Webkit browsers */
+.wireframe-panel--form::-webkit-scrollbar,
+.wireframe-panel--stats::-webkit-scrollbar,
+.activity-table-wrap::-webkit-scrollbar,
+.admin-feed::-webkit-scrollbar,
+.admin-feed--public::-webkit-scrollbar,
+.bar-chart::-webkit-scrollbar {
+	width: 12px;
+	height: 12px;
+}
+
+.wireframe-panel--form::-webkit-scrollbar-track,
+.wireframe-panel--stats::-webkit-scrollbar-track,
+.activity-table-wrap::-webkit-scrollbar-track,
+.admin-feed::-webkit-scrollbar-track,
+.admin-feed--public::-webkit-scrollbar-track,
+.bar-chart::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.wireframe-panel--form::-webkit-scrollbar-thumb,
+.wireframe-panel--stats::-webkit-scrollbar-thumb,
+.activity-table-wrap::-webkit-scrollbar-thumb,
+.admin-feed::-webkit-scrollbar-thumb,
+.admin-feed--public::-webkit-scrollbar-thumb,
+.bar-chart::-webkit-scrollbar-thumb {
+	background: linear-gradient(180deg, #cfeefb, #9fd9f1);
+	border-radius: 8px;
+	border: 3px solid rgba(255,255,255,0.6);
+}
+
+.wireframe-panel--form::-webkit-scrollbar-thumb:hover,
+.wireframe-panel--stats::-webkit-scrollbar-thumb:hover,
+.activity-table-wrap::-webkit-scrollbar-thumb:hover,
+.admin-feed::-webkit-scrollbar-thumb:hover,
+.admin-feed--public::-webkit-scrollbar-thumb:hover,
+.bar-chart::-webkit-scrollbar-thumb:hover {
+	background: linear-gradient(180deg, #9fd9f1, #6fc1e8);
+}
+
+/* Firefox */
+.wireframe-panel--form,
+.wireframe-panel--stats,
+.activity-table-wrap,
+.admin-feed,
+.admin-feed--public,
+.bar-chart {
+	scrollbar-width: thin;
+	scrollbar-color: #9fd9f1 transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

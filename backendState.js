@@ -995,9 +995,82 @@ async function saveSuggestionStatus(pool, payload = {}) {
 	}
 }
 
+async function deleteSuggestion(connection, orgId, suggestionId) {
+	const numericSuggestionId = Number(suggestionId || 0);
+	if (!Number.isFinite(numericSuggestionId) || numericSuggestionId <= 0) {
+		return {
+			ok: false,
+			message: "Missing suggestion identifier."
+		};
+	}
+
+	const existing = await fetchSingleRow(
+		connection,
+		`SELECT id FROM suggestions WHERE org_id = ? AND id = ? LIMIT 1`,
+		[orgId, numericSuggestionId]
+	);
+
+	if (!existing) {
+		return {
+			ok: false,
+			message: "Suggestion not found."
+		};
+	}
+
+	await connection.execute(
+		`DELETE FROM suggestions WHERE id = ? AND org_id = ?`,
+		[numericSuggestionId, orgId]
+	);
+
+	return {
+		ok: true,
+		message: "Suggestion deleted."
+	};
+}
+
+async function saveSuggestionDelete(pool, payload = {}) {
+	const organization = await resolveOrganizationContext(pool, payload);
+	if (!organization) {
+		return {
+			ok: false,
+			message: "Unable to resolve the current organization."
+		};
+	}
+
+	const connection = await pool.getConnection();
+	try {
+		await connection.beginTransaction();
+		const deleteResult = await deleteSuggestion(connection, organization.id, payload.suggestionId);
+		if (!deleteResult.ok) {
+			await connection.rollback();
+			return deleteResult;
+		}
+
+		await connection.commit();
+		const loadedState = await loadAdminState(pool, { orgId: organization.id });
+		if (!loadedState.ok) {
+			return loadedState;
+		}
+
+		return {
+			...loadedState,
+			message: deleteResult.message || "Suggestion deleted."
+		};
+	} catch (error) {
+		await connection.rollback();
+		return {
+			ok: false,
+			message: error instanceof Error ? error.message : "Unable to delete suggestion."
+		};
+	} finally {
+		connection.release();
+	}
+}
+
 module.exports = {
 	loadAdminState,
 	saveAdminState,
 	saveSuggestionStatus,
+	saveSuggestionDelete,
 	resolveOrganizationContext
 };

@@ -67,6 +67,7 @@
 	grid-auto-rows: max-content;
 	gap: 10px;
 	min-height: 0;
+	height: 100%;
 	overflow: auto;
 	padding-right: 4px;
 	align-content: start;
@@ -239,6 +240,11 @@
 
 .admin-trend-empty {
 	min-height: 190px;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	font-size: 0.88rem;
+	color: #6a8fa5;
 }
 
 .admin-feed-empty {
@@ -250,8 +256,12 @@
 }
 
 .admin-feed--public {
-	max-height: none;
-	overflow: visible;
+	max-height: 220px;
+	min-height: 220px;
+	overflow-y: auto;
+	overflow-x: hidden;
+	padding-right: 4px;
+	scrollbar-gutter: stable;
 }
 
 .admin-public-controls {
@@ -299,6 +309,11 @@
 	font-weight: 700;
 	color: #6a8191;
 	margin-top: auto;
+}
+
+.admin-panel[data-admin-panel="public-stats"] {
+	grid-template-rows: auto auto auto minmax(0, 1fr);
+	min-height: 0;
 }
 
 @media (max-width: 1100px) {

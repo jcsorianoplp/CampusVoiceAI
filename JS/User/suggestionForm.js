@@ -43,10 +43,17 @@ function createTrackingId() {
 function getCategoryTotals(state) {
 	const categoryMap = new Map();
 
+	// Add all defined categories from state first (with 0 volume)
+	(state?.categories || []).forEach((category) => {
+		categoryMap.set(category.name, { name: category.name, volume: 0 });
+	});
+
+	// Then update with actual suggestion counts
 	(state?.suggestions || []).forEach((suggestion) => {
-		const current = categoryMap.get(suggestion.category) || { name: suggestion.category, volume: 0 };
+		const categoryName = suggestion.category;
+		const current = categoryMap.get(categoryName) || { name: categoryName, volume: 0 };
 		current.volume += 1;
-		categoryMap.set(suggestion.category, current);
+		categoryMap.set(categoryName, current);
 	});
 
 	return Array.from(categoryMap.values()).sort((left, right) => right.volume - left.volume);
@@ -136,14 +143,14 @@ function renderPublicPanel(state) {
 
 	if (publicTrendChart) {
 		publicTrendChart.innerHTML = categories.length
-			? categories.slice(0, 6).map((item, index) => {
-				const height = Math.max(24, Math.round((item.volume / totalVolume) * 160));
+			? categories.map((item, index) => {
+				const width = Math.max(8, Math.round((item.volume / totalVolume) * 100));
 				const palette = ["#4fd12f", "#39a5be", "#b030b6", "#2d6ed8", "#ff8a1e", "#dfdfdf"];
 				const label = item.name.replace(/^Campus\s+/i, "");
 				return `
 					<div class="public-bar-group">
-						<div class="public-bar" style="height:${height}px; background:${palette[index % palette.length]};"></div>
 						<span>${label}</span>
+						<div class="public-bar" style="width:${width}%; background:${palette[index % palette.length]};"></div>
 					</div>
 				`;
 			}).join("")

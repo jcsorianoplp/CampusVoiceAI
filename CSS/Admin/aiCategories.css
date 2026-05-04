@@ -49,6 +49,7 @@
 	grid-auto-rows: max-content;
 	gap: 10px;
 	min-height: 0;
+	height: 100%;
 	overflow: auto;
 	padding-right: 4px;
 	align-content: start;
@@ -56,6 +57,7 @@
 
 .admin-panel[data-admin-panel="ai-categories"] {
 	grid-template-rows: auto auto auto minmax(0, 1fr);
+	min-height: 0;
 }
 
 .admin-ai-form {
