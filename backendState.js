@@ -139,6 +139,128 @@ function splitKeywords(keywords) {
 		.slice(0, 12);
 }
 
+function tokenizeText(value) {
+	return String(value || "")
+		.toLowerCase()
+		.match(/[a-z0-9]+/g) || [];
+}
+
+function clampNumber(value, min, max) {
+	const numericValue = Number(value);
+	if (!Number.isFinite(numericValue)) {
+		return min;
+	}
+	return Math.max(min, Math.min(max, numericValue));
+}
+
+function normalizeCategoryName(value) {
+	return String(value || "")
+		.trim()
+		.toLowerCase()
+		.replace(/^campus\s+/i, "")
+		.replace(/\s+/g, " ");
+}
+
+function classifySuggestionText(text, categories) {
+	const tokens = tokenizeText(text);
+	const textLower = String(text || "").toLowerCase();
+
+	let best = null;
+	let bestScore = 0;
+
+	for (const category of categories) {
+		const name = String(category.name || "").trim();
+		if (!name) {
+			continue;
+		}
+
+		const keywords = Array.isArray(category.keywords) ? category.keywords : [];
+		let score = 0;
+
+		// keyword hits are strongest
+		for (const keyword of keywords) {
+			const kw = String(keyword || "").trim().toLowerCase();
+			if (!kw) continue;
+			if (textLower.includes(kw)) {
+				score += 3;
+			}
+		}
+
+		// name token overlap helps when keywords are sparse
+		const nameTokens = tokenizeText(normalizeCategoryName(name));
+		for (const token of tokens) {
+			if (nameTokens.includes(token)) {
+				score += 2;
+			}
+		}
+
+		// explicit mention of full category name gives a bump
+		const normalizedName = normalizeCategoryName(name);
+		if (normalizedName && textLower.includes(normalizedName)) {
+			score += 5;
+		}
+
+		if (score > bestScore) {
+			bestScore = score;
+			best = {
+				name,
+				id: category.id || null
+			};
+		}
+	}
+
+	// No meaningful match => Uncategorized + low confidence
+	if (!best || bestScore <= 0) {
+		return {
+			categoryId: null,
+			categoryName: "Uncategorized",
+			aiConfidence: 0.45
+		};
+	}
+
+	// Score to confidence mapping (0.52..0.98)
+	const aiConfidence = clampNumber(0.52 + (bestScore * 0.06), 0.52, 0.98);
+
+	return {
+		categoryId: best.id || null,
+		categoryName: best.name,
+		aiConfidence
+	};
+}
+
+async function getActiveCategoriesWithKeywords(connection, orgId) {
+	const [categoryRows] = await connection.execute(
+		`SELECT id, name
+		 FROM categories
+		 WHERE org_id = ? AND is_active = 1
+		 ORDER BY id ASC`,
+		[orgId]
+	);
+
+	const [keywordRows] = await connection.execute(
+		`SELECT category_id, keyword
+		 FROM category_keywords
+		 WHERE category_id IN (
+			SELECT id FROM categories WHERE org_id = ? AND is_active = 1
+		 )
+		 ORDER BY category_id ASC, id ASC`,
+		[orgId]
+	);
+
+	const keywordMap = new Map();
+	(keywordRows || []).forEach((row) => {
+		const current = keywordMap.get(row.category_id) || [];
+		current.push(row.keyword);
+		keywordMap.set(row.category_id, current);
+	});
+
+	return (categoryRows || []).map((row) => ({
+		id: row.id,
+		name: row.name,
+		keywords: splitKeywords(keywordMap.get(row.id))
+	}));
+}
+
 function parseSlaValue(value, fallback) {
 	const match = String(value || "").match(/(\d+)/);
 	if (!match) {
@@ -271,7 +393,15 @@ function buildSuggestions(suggestionRows, categoryMap) {
 	return suggestionRows.map((row) => {
 		const categoryName = row.category_name || "Uncategorized";
 		const categoryConfidence = categoryMap.get(categoryName)?.confidence || 80;
-		const aiConfidence = normalizePercent(row.ai_confidence, categoryConfidence);
+		const hasAiConfidence = row.ai_confidence !== null && row.ai_confidence !== undefined;
+		let aiConfidence = !hasAiConfidence && categoryName === "Uncategorized"
+			? 45
+			: normalizePercent(row.ai_confidence, categoryConfidence);
+
+		// Enforce: Uncategorized should always be treated as low confidence.
+		if (categoryName === "Uncategorized") {
+			aiConfidence = Math.min(55, normalizePercent(aiConfidence, 45));
+		}
 		const status = normalizeSuggestionStatus(row.status || "open");
 		const timestamp = row.created_at || row.updated_at || new Date();
 
@@ -740,14 +870,8 @@ async function syncSuggestions(connection, orgId, categoriesByName, suggestions 
 }
 
 async function saveSuggestionSubmissions(connection, orgId, suggestions = []) {
-	const [categoryRows] = await connection.execute(
-		`SELECT id, name
-		 FROM categories
-		 WHERE org_id = ? AND is_active = 1
-		 ORDER BY id ASC`,
-		[orgId]
-	);
-	const categoriesByName = new Map((categoryRows || []).map((row) => [row.name, row.id]));
+	const categories = await getActiveCategoriesWithKeywords(connection, orgId);
+	const categoriesByName = new Map(categories.map((row) => [row.name, row.id]));
 	const [existingRows] = await connection.execute(
 		`SELECT id, tracking_id
 		 FROM suggestions
@@ -762,18 +886,16 @@ async function saveSuggestionSubmissions(connection, orgId, suggestions = []) {
 			continue;
 		}
 
-		const categoryName = String(suggestion.category || "Uncategorized").trim() || "Uncategorized";
-		const categoryId = categoriesByName.get(categoryName) || null;
-		const aiConfidence = normalizePercent(
-			suggestion.aiConfidence ?? suggestion.confidence ?? 80,
-			80
-		) / 100;
+		const text = String(suggestion.text || "").trim();
+		const classification = classifySuggestionText(text, categories);
+		const categoryName = String(classification.categoryName || "Uncategorized").trim() || "Uncategorized";
+		const categoryId = categoryName === "Uncategorized" ? null : (categoriesByName.get(categoryName) || null);
+		const aiConfidence = clampNumber(classification.aiConfidence, 0, 1);
 		const status = normalizeSuggestionStatus(suggestion.status || "open");
 		const sentiment = String(suggestion.sentiment || "Neutral");
 		const impactLevel = normalizeImpactLevel(suggestion.impactLevel || "medium");
 		const location = String(suggestion.location || "").trim();
 		const suggestedSolution = String(suggestion.suggestedSolution || "").trim();
-		const text = String(suggestion.text || "").trim();
 		const existingId = existingMap.get(trackingId);
 		const resolvedAt = status === "resolved" ? new Date() : null;
 
@@ -913,18 +1035,10 @@ async function saveAdminState(pool, payload = {}) {
 
 			if (isCategoryChange || source === "local") {
 				await syncAiRules(connection, organization.id, state.aiRules || {});
-				const categoriesByName = await syncCategories(connection, organization.id, state.categories || []);
-				await syncSuggestions(connection, organization.id, categoriesByName, state.suggestions || []);
+				await syncCategories(connection, organization.id, state.categories || []);
 			} else {
-				const [categoryRows] = await connection.execute(
-					`SELECT id, name, priority, route_team, sla_target, confidence_threshold, is_active
-					 FROM categories
-					 WHERE org_id = ? AND is_active = 1
-					 ORDER BY id ASC`,
-					[organization.id]
-				);
-				const categoriesByName = new Map(categoryRows.map((row) => [row.name, { id: row.id, name: row.name }]));
-				await syncSuggestions(connection, organization.id, categoriesByName, state.suggestions || []);
+				// Intentionally do not sync suggestions here.
+				// Suggestions are written via public submission, status updates, or deletes.
 			}
 		}
 
@@ -932,6 +1046,20 @@ async function saveAdminState(pool, payload = {}) {
 			await syncReportHistory(connection, organization.id, Number(payload.adminId || 0), state.reportHistory || []);
 		}
 		await connection.commit();
+
+		// For public submissions, reload from DB so the renderer gets authoritative
+		// AI category + confidence values (not client guesses).
+		if (isSuggestionSubmit) {
+			const loadedState = await loadAdminState(pool, { orgId: organization.id });
+			if (!loadedState.ok) {
+				return loadedState;
+			}
+			return {
+				...loadedState,
+				message: "Suggestion saved and categorized."
+			};
+		}
+
 		return {
 			ok: true,
 			state: {
@@ -1072,5 +1200,32 @@ module.exports = {
 	saveAdminState,
 	saveSuggestionStatus,
 	saveSuggestionDelete,
-	resolveOrganizationContext
+	resolveOrganizationContext,
+	// exported for IPC preview in AI Categories simulator
+	previewAiClassification: async (pool, payload = {}) => {
+		const organization = await resolveOrganizationContext(pool, payload);
+		if (!organization) {
+			return { ok: false, message: "Unable to resolve the current organization." };
+		}
+
+		const text = String(payload.text || "").trim();
+		if (!text) {
+			return { ok: true, result: { category: "Uncategorized", confidence: 0 } };
+		}
+
+		const connection = await pool.getConnection();
+		try {
+			const categories = await getActiveCategoriesWithKeywords(connection, organization.id);
+			const result = classifySuggestionText(text, categories);
+			return {
+				ok: true,
+				result: {
+					category: result.categoryName,
+					confidence: Math.round(clampNumber(result.aiConfidence, 0, 1) * 100)
+				}
+			};
+		} finally {
+			connection.release();
+		}
+	}
 };

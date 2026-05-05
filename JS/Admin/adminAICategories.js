@@ -167,38 +167,30 @@ function runRuleSimulation(state) {
 		return;
 	}
 
-	let bestCandidate = null;
-	const boostedThreshold = Number(routingThresholdInput?.value || state.aiRules.threshold || 80);
+	// Use backend classification preview so the simulator matches real saved suggestions.
+	if (window.campusVoiceDesktop?.previewAiClassification) {
+		window.campusVoiceDesktop.previewAiClassification({
+			orgId: state.organizationId,
+			text: sampleText
+		})
+			.then((resp) => {
+				if (!resp?.ok || !resp.result) {
+					aiRuleTestResult.textContent = resp?.message || "Unable to preview classification.";
+					return;
+				}
 
-	state.categories.forEach((category) => {
-		const matchedKeywords = (category.keywords || []).filter((keyword) => sampleText.includes(keyword.toLowerCase()));
-		const keywordBoost = keywordBoostToggle?.checked ? matchedKeywords.length * 22 : matchedKeywords.length * 12;
-		const score = keywordBoost + (category.confidence * 0.55);
-
-		if (!bestCandidate || score > bestCandidate.score) {
-			bestCandidate = {
-				category,
-				matchedKeywords,
-				score
-			};
-		}
-	});
-
-	if (!bestCandidate) {
-		aiRuleTestResult.textContent = "No category candidates available.";
+				const routingThreshold = Number(routingThresholdInput?.value || state.aiRules.threshold || 80);
+				const confidence = Number(resp.result.confidence || 0);
+				const routeMode = confidence >= routingThreshold ? "Auto-route" : "Manual review";
+				aiRuleTestResult.textContent = `Predicted: ${resp.result.category} (${confidence}% confidence) | ${routeMode}.`;
+			})
+			.catch(() => {
+				aiRuleTestResult.textContent = "Classifier preview is unavailable.";
+			});
 		return;
 	}
 
-	const simulatedConfidence = Math.max(
-		52,
-		Math.min(98, Math.round((bestCandidate.category.confidence * 0.6) + (bestCandidate.matchedKeywords.length * 11)))
-	);
-	const routeMode = simulatedConfidence >= boostedThreshold ? "Auto-route" : "Manual review";
-	const matchedText = bestCandidate.matchedKeywords.length
-		? `Matched: ${bestCandidate.matchedKeywords.join(", ")}.`
-		: "No keyword hint matched.";
-
-	aiRuleTestResult.textContent = `Predicted: ${bestCandidate.category.name} (${simulatedConfidence}% confidence) | ${routeMode} to ${bestCandidate.category.route}. ${matchedText}`;
+	aiRuleTestResult.textContent = "Classifier preview is unavailable.";
 }
 
 function syncControls(state) {
@@ -268,10 +260,11 @@ if (routingThresholdInput) {
 
 if (aiRuleTestInput) {
 	aiRuleTestInput.addEventListener("input", () => {
-		commitState((state) => {
-			state.aiRules.testInput = aiRuleTestInput.value;
-			return state;
-		}, "ai-test-input");
+		// Keep simulator input local (do not persist to DB).
+		const current = window.CampusVoiceAdminState?.getState?.();
+		if (current) {
+			runRuleSimulation(current);
+		}
 	});
 }
 

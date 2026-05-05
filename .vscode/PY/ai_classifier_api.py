@@ -108,6 +108,9 @@ def init_database():
             INSERT INTO categories (name, priority, route, sla, confidence, keywords)
             VALUES (?, ?, ?, ?, ?, ?)
         ''', default_categories)
+    # Ensure an 'Uncategorized' bucket exists for unknown classifications
+    cursor.execute("INSERT OR IGNORE INTO categories (name, priority, route, sla, confidence, keywords) VALUES (?, ?, ?, ?, ?, ?)",
+                   ("Uncategorized", "low", "General Review", "24h", 60, '[]'))
     
     # Insert default AI rules
     cursor.execute("SELECT COUNT(*) FROM ai_rules")
@@ -254,14 +257,41 @@ If unsure which category fits best, confidence should be below 70."""
         response = response.strip()
         
         result = json.loads(response)
-        category = result.get("category", categories[0]['name'] if categories else "General")
+        category = result.get("category", None)
+        # Normalize category response
+        if isinstance(category, str):
+            category = category.strip()
         confidence = float(result.get("confidence", 75))
-        
-        # Validate category exists
+
+        # Validate category exists (try tolerant matching)
         valid_categories = [c['name'] for c in categories]
-        if category not in valid_categories:
-            category = valid_categories[0] if valid_categories else "General"
-            confidence = 65
+        def find_best_match(name):
+            if not name:
+                return None
+            name_norm = name.strip().lower()
+            # exact match
+            for v in valid_categories:
+                if v.lower() == name_norm:
+                    return v
+            # match ignoring common 'Campus ' prefix
+            norm_no_prefix = re.sub(r'^campus\s+', '', name_norm)
+            for v in valid_categories:
+                if re.sub(r'^campus\s+', '', v.lower()) == norm_no_prefix:
+                    return v
+            # contains or startswith match
+            for v in valid_categories:
+                if norm_no_prefix in v.lower() or v.lower().startswith(norm_no_prefix) or norm_no_prefix.startswith(v.lower()):
+                    return v
+            return None
+
+        matched = find_best_match(category)
+        if matched:
+            category = matched
+        else:
+            # If classifier returned an unknown category, mark as Uncategorized
+            # and lower the confidence so it goes into the review queue when appropriate.
+            category = "Uncategorized"
+            confidence = min(confidence, 65)
         
     except Exception as e:
         print(f"AI Error: {e}")
@@ -285,19 +315,56 @@ def fallback_classify(text: str, categories: List[Dict]) -> tuple:
     if not categories:
         return "General", 50
     
-    best_category = categories[0]['name']
+    best_category = None
     best_score = 0
-    
+
+    # Tokenize text for simple name/word matching
+    tokens = re.findall(r"\w+", text_lower)
+
+    # Simple synonym map for common physical items
+    synonyms = {
+        "chair": ["classroom", "chairs", "seat", "seats"],
+        "socket": ["power", "socket", "sockets", "plug"],
+        "aircon": ["ac", "aircon", "air", "air-conditioning", "airconditioning"],
+        "wifi": ["wifi", "internet", "network"]
+    }
+
     for category in categories:
+        score = 0
         keywords = category.get('keywords', [])
-        score = sum(1 for kw in keywords if kw.lower() in text_lower)
+        # keyword matches (strong)
+        for kw in keywords:
+            if not kw:
+                continue
+            if kw.lower() in text_lower:
+                score += 3
+
+        # name/token matches (weaker but useful when no keywords exist)
+        name_norm = re.sub(r"^campus\s+|services|support", "", category['name'].lower())
+        name_tokens = re.findall(r"\w+", name_norm)
+        for t in tokens:
+            for nt in name_tokens:
+                if t == nt or t.startswith(nt) or nt.startswith(t) or t in nt or nt in t:
+                    score += 2
+
+        # synonym matches
+        for key, syns in synonyms.items():
+            for s in syns:
+                if s in text_lower and (key in category['name'].lower() or any(key in k.lower() for k in keywords)):
+                    score += 4
+
         if score > best_score:
             best_score = score
             best_category = category['name']
-    
+
+    # If we couldn't find any meaningful match, return 'Uncategorized' with low confidence
+    if not best_category or best_score <= 0:
+        return "Uncategorized", 45
+
     # Calculate confidence based on match quality
-    confidence = min(85, 60 + (best_score * 8))
-    
+    # stronger matches produce higher confidence; minimal match yields low confidence
+    confidence = min(95, 55 + max(0, best_score) * 6)
+
     return best_category, confidence
 
 # ============ API ENDPOINTS ============

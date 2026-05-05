@@ -5,7 +5,7 @@ const path = require("path");
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 const { pool, testConnection } = require("./db");
-const { loadAdminState, saveAdminState, saveSuggestionStatus, saveSuggestionDelete, resolveOrganizationContext } = require("./backendState");
+const { loadAdminState, saveAdminState, saveSuggestionStatus, saveSuggestionDelete, resolveOrganizationContext, previewAiClassification } = require("./backendState");
 
 function createMailTransport() {
 	const host = process.env.CV_SMTP_HOST;
@@ -144,6 +144,17 @@ ipcMain.handle("suggestion:delete", async (_event, payload) => {
             message: error instanceof Error ? error.message : "Unable to delete suggestion."
         };
     }
+});
+
+ipcMain.handle("ai:preview-classify", async (_event, payload) => {
+	try {
+		return await previewAiClassification(pool, payload);
+	} catch (error) {
+		return {
+			ok: false,
+			message: error instanceof Error ? error.message : "Unable to preview AI classification."
+		};
+	}
 });
 
 ipcMain.handle("auth:login", async (_event, credentials) => {

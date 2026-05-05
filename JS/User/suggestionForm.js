@@ -321,25 +321,21 @@ if (suggestionForm && suggestionInput) {
 			}
 
 		if (window.CampusVoiceAdminState) {
-			const category = inferCategory(suggestionText);
-			const sentiment = inferSentiment(suggestionText);
-			const nextFeedEntry = buildPublicFeedEntry(suggestionText, category);
+			// Do NOT infer category on the client; backend will categorize from DB rules.
 			window.CampusVoiceAdminState.updateState((state) => {
 				state.suggestions.unshift({
 					time: "Just now",
-					category,
+					category: "Processing",
 					status: "open",
 					statusLabel: "Open",
 					impactLevel,
 					location: locationTag,
 					suggestedSolution,
 					trackingId,
-					sentiment,
+					sentiment: "Neutral",
 					text: suggestionText
 				});
 
-				state.publicFeed.unshift(nextFeedEntry);
-				state.publicFeed = state.publicFeed.slice(0, 10);
 				state.lastUpdated = `Submitted: ${new Date().toLocaleString()}`;
 				return state;
 			}, "public-suggestion-submit");

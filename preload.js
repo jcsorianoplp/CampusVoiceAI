@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld("campusVoiceDesktop", {
 	resolveOrganization: (payload) => ipcRenderer.invoke("org:resolve", payload),
 	loadAppState: (payload) => ipcRenderer.invoke("app:state:load", payload),
 	saveAppState: (payload) => ipcRenderer.invoke("app:state:save", payload),
+	previewAiClassification: (payload) => ipcRenderer.invoke("ai:preview-classify", payload),
 	updateSuggestionStatus: (payload) => ipcRenderer.invoke("suggestion:update-status", payload),
 	deleteSuggestion: (payload) => ipcRenderer.invoke("suggestion:delete", payload),
 	loginAdmin: (username, password) => ipcRenderer.invoke("auth:login", { username, password }),
