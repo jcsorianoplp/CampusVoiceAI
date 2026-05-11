@@ -139,127 +139,7 @@ function splitKeywords(keywords) {
 		.slice(0, 12);
 }
 
-function tokenizeText(value) {
-	return String(value || "")
-		.toLowerCase()
-		.match(/[a-z0-9]+/g) || [];
-}
 
-function clampNumber(value, min, max) {
-	const numericValue = Number(value);
-	if (!Number.isFinite(numericValue)) {
-		return min;
-	}
-	return Math.max(min, Math.min(max, numericValue));
-}
-
-function normalizeCategoryName(value) {
-	return String(value || "")
-		.trim()
-		.toLowerCase()
-		.replace(/^campus\s+/i, "")
-		.replace(/\s+/g, " ");
-}
-
-function classifySuggestionText(text, categories) {
-	const tokens = tokenizeText(text);
-	const textLower = String(text || "").toLowerCase();
-
-	let best = null;
-	let bestScore = 0;
-
-	for (const category of categories) {
-		const name = String(category.name || "").trim();
-		if (!name) {
-			continue;
-		}
-
-		const keywords = Array.isArray(category.keywords) ? category.keywords : [];
-		let score = 0;
-
-		// keyword hits are strongest
-		for (const keyword of keywords) {
-			const kw = String(keyword || "").trim().toLowerCase();
-			if (!kw) continue;
-			if (textLower.includes(kw)) {
-				score += 3;
-			}
-		}
-
-		// name token overlap helps when keywords are sparse
-		const nameTokens = tokenizeText(normalizeCategoryName(name));
-		for (const token of tokens) {
-			if (nameTokens.includes(token)) {
-				score += 2;
-			}
-		}
-
-		// explicit mention of full category name gives a bump
-		const normalizedName = normalizeCategoryName(name);
-		if (normalizedName && textLower.includes(normalizedName)) {
-			score += 5;
-		}
-
-		if (score > bestScore) {
-			bestScore = score;
-			best = {
-				name,
-				id: category.id || null
-			};
-		}
-	}
-
-	// No meaningful match => Uncategorized + low confidence
-	if (!best || bestScore <= 0) {
-		return {
-			categoryId: null,
-			categoryName: "Uncategorized",
-			aiConfidence: 0.45
-		};
-	}
-
-	// Score to confidence mapping (0.52..0.98)
-	const aiConfidence = clampNumber(0.52 + (bestScore * 0.06), 0.52, 0.98);
-
-	return {
-		categoryId: best.id || null,
-		categoryName: best.name,
-		aiConfidence
-	};
-}
-
-async function getActiveCategoriesWithKeywords(connection, orgId) {
-	const [categoryRows] = await connection.execute(
-		`SELECT id, name
-		 FROM categories
-		 WHERE org_id = ? AND is_active = 1
-		 ORDER BY id ASC`,
-		[orgId]
-	);
-
-	const [keywordRows] = await connection.execute(
-		`SELECT category_id, keyword
-		 FROM category_keywords
-		 WHERE category_id IN (
-			SELECT id FROM categories WHERE org_id = ? AND is_active = 1
-		 )
-		 ORDER BY category_id ASC, id ASC`,
-		[orgId]
-	);
-
-	const keywordMap = new Map();
-	(keywordRows || []).forEach((row) => {
-		const current = keywordMap.get(row.category_id) || [];
-		current.push(row.keyword);
-		keywordMap.set(row.category_id, current);
-	});
-
-	return (categoryRows || []).map((row) => ({
-		id: row.id,
-		name: row.name,
-		keywords: splitKeywords(keywordMap.get(row.id))
-	}));
-}
 
 function parseSlaValue(value, fallback) {
 	const match = String(value || "").match(/(\d+)/);
@@ -870,8 +750,16 @@ async function syncSuggestions(connection, orgId, categoriesByName, suggestions 
 }
 
 async function saveSuggestionSubmissions(connection, orgId, suggestions = []) {
-	const categories = await getActiveCategoriesWithKeywords(connection, orgId);
-	const categoriesByName = new Map(categories.map((row) => [row.name, row.id]));
+	const [categoryRows] = await connection.execute(
+		`SELECT id, name
+		 FROM categories
+		 WHERE org_id = ? AND is_active = 1
+		 ORDER BY id ASC`,
+		[orgId]
+	);
+	const normalizeCategoryKey = (value) => String(value || "").trim().toLowerCase().replace(/^campus\s+/i, "");
+	const categoriesByName = new Map((categoryRows || []).map((row) => [normalizeCategoryKey(row.name), row.id]));
+
 	const [existingRows] = await connection.execute(
 		`SELECT id, tracking_id
 		 FROM suggestions
@@ -880,6 +768,34 @@ async function saveSuggestionSubmissions(connection, orgId, suggestions = []) {
 	);
 	const existingMap = new Map((existingRows || []).map((row) => [row.tracking_id, row.id]));
 
+	async function classifyTextWithAi(text) {
+		if (typeof fetch !== "function") {
+			return { categoryName: "Uncategorized", aiConfidence: 45 };
+		}
+
+		try {
+			const response = await fetch("http://localhost:8001/test", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ text })
+			});
+
+			if (!response.ok) {
+				return { categoryName: "Uncategorized", aiConfidence: 45 };
+			}
+
+			const data = await response.json();
+			const categoryName = String(data.category || "Uncategorized").trim() || "Uncategorized";
+			const aiConfidence = Number(data.confidence || 45);
+			return {
+				categoryName,
+				aiConfidence: Number.isFinite(aiConfidence) ? aiConfidence : 45
+			};
+		} catch (error) {
+			return { categoryName: "Uncategorized", aiConfidence: 45 };
+		}
+	}
+
 	for (const suggestion of suggestions) {
 		const trackingId = String(suggestion.trackingId || suggestion.tracking_id || "").trim();
 		if (!trackingId) {
@@ -887,12 +803,15 @@ async function saveSuggestionSubmissions(connection, orgId, suggestions = []) {
 		}
 
 		const text = String(suggestion.text || "").trim();
-		const classification = classifySuggestionText(text, categories);
-		const categoryName = String(classification.categoryName || "Uncategorized").trim() || "Uncategorized";
-		const categoryId = categoryName === "Uncategorized" ? null : (categoriesByName.get(categoryName) || null);
-		const aiConfidence = clampNumber(classification.aiConfidence, 0, 1);
+		const classification = await classifyTextWithAi(text);
+		const normalizedCategoryName = normalizeCategoryKey(classification.categoryName);
+		const categoryId = normalizedCategoryName === "uncategorized"
+			? null
+			: (categoriesByName.get(normalizedCategoryName) || null);
+		const rawConfidence = Number(classification.aiConfidence) || 45;
+		const aiConfidence = Number.isFinite(rawConfidence) ? Math.max(0, Math.min(1, rawConfidence / 100)) : 0.45;
 		const status = normalizeSuggestionStatus(suggestion.status || "open");
-		const sentiment = String(suggestion.sentiment || "Neutral");
+		const sentiment = String(suggestion.sentiment || "").trim() || null;
 		const impactLevel = normalizeImpactLevel(suggestion.impactLevel || "medium");
 		const location = String(suggestion.location || "").trim();
 		const suggestedSolution = String(suggestion.suggestedSolution || "").trim();
@@ -1215,15 +1134,30 @@ module.exports = {
 
 		const connection = await pool.getConnection();
 		try {
-			const categories = await getActiveCategoriesWithKeywords(connection, organization.id);
-			const result = classifySuggestionText(text, categories);
+			// Call Python AI classifier API for preview (same as real classification)
+			const response = await fetch("http://localhost:8001/test", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					text,
+					org_id: organization.id
+				})
+			});
+
+			if (!response.ok) {
+				return { ok: false, message: "AI classifier is unavailable." };
+			}
+
+			const data = await response.json();
 			return {
 				ok: true,
 				result: {
-					category: result.categoryName,
-					confidence: Math.round(clampNumber(result.aiConfidence, 0, 1) * 100)
+					category: data.category || "Uncategorized",
+					confidence: Math.round(data.confidence || 0)
 				}
 			};
+		} catch (err) {
+			return { ok: false, message: "Unable to reach AI classifier." };
 		} finally {
 			connection.release();
 		}

@@ -69,33 +69,6 @@ function getResponseRate(state) {
 	return Math.round((resolvedCount / total) * 100);
 }
 
-function inferCategory(text) {
-	const lower = String(text || "").toLowerCase();
-	const rules = [
-		{ label: "Campus Safety", terms: ["safe", "safety", "security", "gate", "crowd", "incident"] },
-		{ label: "Academic Services", terms: ["grading", "grade", "schedule", "exam", "professor", "classroom", "projector", "lecture"] },
-		{ label: "Campus Facilities", terms: ["aircon", "air conditioning", "light", "lights", "wifi", "room", "building", "library", "chair", "canteen"] },
-		{ label: "Student Life", terms: ["club", "org", "organization", "event", "events", "activity", "student"] },
-		{ label: "Admin Process", terms: ["enroll", "registration", "process", "form", "checklist", "admission"] }
-	];
-
-	const foundRule = rules.find((rule) => rule.terms.some((term) => lower.includes(term)));
-	return foundRule ? foundRule.label : "Campus Facilities";
-}
-
-function inferSentiment(text) {
-	const lower = String(text || "").toLowerCase();
-	if (/(thank|great|good|love|helpful|better)/.test(lower)) {
-		return "Positive";
-	}
-
-	if (/(issue|bad|slow|problem|hard|confusing|unsafe|crowded|weak|late)/.test(lower)) {
-		return "Negative";
-	}
-
-	return "Neutral";
-}
-
 function normalizeImpactLevel(value) {
 	const level = String(value || "medium").trim().toLowerCase();
 	if (level === "high") {
@@ -109,15 +82,69 @@ function normalizeImpactLevel(value) {
 	return "medium";
 }
 
-function buildPublicFeedEntry(text, category) {
-	return {
-		time: "Just now",
-		category,
-		status: "open",
-		statusLabel: "Open",
-		text: `New suggestion submitted: ${text.length > 92 ? `${text.slice(0, 89)}...` : text}`
-	};
+function getPublicRef() {
+	const url = new URL(window.location.href);
+	const queryRef = String(url.searchParams.get("ref") || url.searchParams.get("slug") || "").trim();
+	if (queryRef) {
+		return queryRef;
+	}
+
+	const pathParts = window.location.pathname.split("/").filter(Boolean);
+	if (!pathParts.length) {
+		return "";
+	}
+
+	if (pathParts[0] === "public" && pathParts[1]) {
+		return decodeURIComponent(pathParts[1]);
+	}
+
+	return decodeURIComponent(pathParts[pathParts.length - 1] || "");
 }
+
+function isDesktopMode() {
+	return Boolean(window.campusVoiceDesktop?.saveAppState);
+}
+
+async function loadBrowserPublicState() {
+	if (!window.CampusVoiceAdminState || isDesktopMode()) {
+		return;
+	}
+
+	const ref = getPublicRef();
+	if (!ref) {
+		return;
+	}
+
+	try {
+		const response = await fetch(`/api/public-state?ref=${encodeURIComponent(ref)}`);
+		const data = await response.json();
+		if (data?.ok && data.state) {
+			window.CampusVoiceAdminState.setLocalState(data.state, "public-browser-load");
+		}
+	} catch (error) {
+		if (submitFeedback) {
+			submitFeedback.textContent = "Unable to load the local public page.";
+		}
+	}
+}
+
+async function submitBrowserSuggestion(payload) {
+	const ref = getPublicRef();
+	const response = await fetch("/api/public-submit", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json"
+		},
+		body: JSON.stringify({
+			ref,
+			...payload
+		})
+	});
+
+	return response.json();
+}
+
+
 
 function renderPublicPanel(state) {
 	if (!state) {
@@ -158,24 +185,26 @@ function renderPublicPanel(state) {
 	}
 
 	if (publicAiIntegrationList) {
-		const aiInsights = Array.isArray(state.aiInsights) ? state.aiInsights : [];
+		const activeCatCount = (state?.categories || []).filter((c) => c.name !== "Uncategorized").length;
+		const totalSuggestions = (state?.suggestions || []).length;
+		const reviewQueueCount = (state?.reviewQueue || []).length;
+		const classifierReady = activeCatCount > 0;
 
-		if (!aiInsights.length) {
-			publicAiIntegrationList.className = "public-ai-empty";
-			publicAiIntegrationList.textContent = "No AI integration data yet. Connect a model, rule engine, or live feed here later.";
-		} else {
-			publicAiIntegrationList.className = "public-ai-list";
-			publicAiIntegrationList.innerHTML = aiInsights.slice(0, 4).map((item) => {
-				const title = String(item.title || item.label || item.name || "AI Insight");
-				const summary = String(item.summary || item.detail || item.value || "Live AI output will appear here.");
-				return `
-					<article class="public-ai-item">
-						<div class="public-ai-item-title">${title}</div>
-						<div class="public-ai-item-copy">${summary}</div>
-					</article>
-				`;
-			}).join("");
-		}
+		publicAiIntegrationList.className = "public-ai-list";
+		publicAiIntegrationList.innerHTML = `
+			<article class="public-ai-item">
+				<div class="public-ai-item-title">AI Classifier Status</div>
+				<div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+					<div style="flex: 1; height: 24px; background: #e8f4f8; border-radius: 4px; overflow: hidden;">
+						<div style="height: 100%; background: ${classifierReady ? "#4fd12f" : "#dfdfdf"}; width: ${classifierReady ? "100" : "30"}%; transition: width 0.3s ease;"></div>
+					</div>
+					<span style="font-size: 0.85rem; color: #4d9fc0; font-weight: 600;">${classifierReady ? "Active" : "Ready"}</span>
+				</div>
+				<div style="font-size: 0.8rem; color: #666; margin-top: 6px;">
+					${activeCatCount} categories • ${totalSuggestions} submissions • ${reviewQueueCount} pending review
+				</div>
+			</article>
+		`;
 	}
 
 	if (publicActivityFeed) {
@@ -298,8 +327,14 @@ if (suggestionInput && charCount) {
 }
 
 if (backToAdminButton) {
+	if (!isDesktopMode()) {
+		backToAdminButton.hidden = true;
+	}
+
 	backToAdminButton.addEventListener("click", () => {
-		window.location.href = "../Admin/AdminDashboard.html";
+		if (isDesktopMode()) {
+			window.location.href = "../Admin/AdminDashboard.html";
+		}
 	});
 }
 
@@ -321,6 +356,29 @@ if (suggestionForm && suggestionInput) {
 			}
 
 		if (window.CampusVoiceAdminState) {
+			if (!isDesktopMode()) {
+				if (submitFeedback) {
+					submitFeedback.textContent = "Saving suggestion to the local server...";
+				}
+
+				const saveResult = await submitBrowserSuggestion({
+					trackingId,
+					text: suggestionText,
+					impactLevel,
+					location: locationTag,
+					suggestedSolution,
+					sentiment: "Neutral"
+				});
+
+				if (!saveResult?.ok || !saveResult.state) {
+					if (submitFeedback) {
+						submitFeedback.textContent = `Database save failed: ${saveResult?.message || "Unknown error"}`;
+					}
+					return;
+				}
+
+				window.CampusVoiceAdminState.setLocalState(saveResult.state, "public-suggestion-submit");
+			} else {
 			// Do NOT infer category on the client; backend will categorize from DB rules.
 			window.CampusVoiceAdminState.updateState((state) => {
 				state.suggestions.unshift({
@@ -345,6 +403,7 @@ if (suggestionForm && suggestionInput) {
 					submitFeedback.textContent = `Database save failed: ${saveResult?.message || "Unknown error"}`;
 				}
 				return;
+			}
 			}
 		}
 
@@ -377,4 +436,5 @@ if (window.CampusVoiceAdminState) {
 	const initialState = window.CampusVoiceAdminState.getState();
 	syncOrganizationCopy(initialState);
 	renderPublicPanel(initialState);
+	loadBrowserPublicState();
 }

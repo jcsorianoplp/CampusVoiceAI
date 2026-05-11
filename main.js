@@ -1,7 +1,11 @@
 const { app, BrowserWindow } = require("electron");
 const { ipcMain } = require("electron");
 const crypto = require("crypto");
+const fs = require("fs/promises");
+const http = require("http");
+const os = require("os");
 const path = require("path");
+const { URL } = require("url");
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 const { pool, testConnection } = require("./db");
@@ -44,6 +48,185 @@ function maskEmail(email) {
 }
 
 const mailTransport = createMailTransport();
+
+const publicServerPort = Number(process.env.CV_PUBLIC_PORT || 3000);
+let publicServer = null;
+
+function getWorkspaceRoot() {
+	return __dirname;
+}
+
+function getContentType(filePath) {
+	const extension = path.extname(filePath).toLowerCase();
+	if (extension === ".html") return "text/html; charset=utf-8";
+	if (extension === ".css") return "text/css; charset=utf-8";
+	if (extension === ".js") return "application/javascript; charset=utf-8";
+	if (extension === ".json") return "application/json; charset=utf-8";
+	if (extension === ".svg") return "image/svg+xml";
+	if (extension === ".png") return "image/png";
+	if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
+	if (extension === ".ico") return "image/x-icon";
+	return "application/octet-stream";
+}
+
+function getLocalNetworkAddresses() {
+	const addresses = [];
+	for (const networkInterface of Object.values(os.networkInterfaces())) {
+		for (const entry of networkInterface || []) {
+			if (!entry || entry.internal || entry.family !== "IPv4") {
+				continue;
+			}
+			addresses.push(entry.address);
+		}
+	}
+	return addresses;
+}
+
+function sendJson(res, statusCode, payload) {
+	res.writeHead(statusCode, {
+		"Content-Type": "application/json; charset=utf-8",
+		"Access-Control-Allow-Origin": "*",
+		"Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+		"Access-Control-Allow-Headers": "Content-Type"
+	});
+	res.end(JSON.stringify(payload));
+}
+
+async function readRequestBody(req) {
+	const chunks = [];
+	for await (const chunk of req) {
+		chunks.push(chunk);
+	}
+	const raw = Buffer.concat(chunks).toString("utf8");
+	if (!raw) {
+		return {};
+	}
+
+	try {
+		return JSON.parse(raw);
+	} catch (error) {
+		return {};
+	}
+}
+
+async function serveFile(res, filePath) {
+	try {
+		const content = await fs.readFile(filePath);
+		res.writeHead(200, {
+			"Content-Type": getContentType(filePath)
+		});
+		res.end(content);
+	} catch (error) {
+		res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+		res.end("Not found");
+	}
+}
+
+async function servePublicPage(res, requestUrl) {
+	const htmlPath = path.join(getWorkspaceRoot(), "HTML", "User", "SuggestionForm.html");
+	try {
+		let html = await fs.readFile(htmlPath, "utf8");
+		if (!html.includes("<base href=")) {
+			html = html.replace("<head>", '<head><base href="/">');
+		}
+		res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+		res.end(html);
+	} catch (error) {
+		res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+		res.end("Unable to load public suggestion page.");
+	}
+}
+
+async function startPublicServer() {
+	if (publicServer) {
+		return publicServer;
+	}
+
+	publicServer = http.createServer(async (req, res) => {
+		const requestUrl = new URL(req.url || "/", "http://localhost");
+		const pathname = decodeURIComponent(requestUrl.pathname);
+
+		if (req.method === "OPTIONS") {
+			res.writeHead(204, {
+				"Access-Control-Allow-Origin": "*",
+				"Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+				"Access-Control-Allow-Headers": "Content-Type"
+			});
+			res.end();
+			return;
+		}
+
+		if (pathname === "/api/public-state" && req.method === "GET") {
+			const ref = String(requestUrl.searchParams.get("ref") || requestUrl.searchParams.get("slug") || "").trim();
+			const result = await loadAdminState(pool, ref ? { ref } : {});
+			sendJson(res, result.ok ? 200 : 404, result);
+			return;
+		}
+
+		if (pathname === "/api/public-submit" && req.method === "POST") {
+			const payload = await readRequestBody(req);
+			const ref = String(payload.ref || payload.slug || payload.linkSlug || requestUrl.searchParams.get("ref") || "").trim();
+			const text = String(payload.text || "").trim();
+			if (!ref) {
+				sendJson(res, 400, { ok: false, message: "Missing organization link." });
+				return;
+			}
+
+			const context = await loadAdminState(pool, { ref });
+			if (!context.ok) {
+				sendJson(res, 404, context);
+				return;
+			}
+
+			const trackingId = String(payload.trackingId || `CV-${Date.now().toString(36).toUpperCase()}`).trim();
+			const nextState = {
+				...context.state,
+				suggestions: [
+					{
+						trackingId,
+						text,
+						impactLevel: payload.impactLevel || "medium",
+						location: payload.location || "",
+						suggestedSolution: payload.suggestedSolution || "",
+						status: "open",
+						sentiment: payload.sentiment || "Neutral"
+					}
+				]
+			};
+
+			const saveResult = await saveAdminState(pool, {
+				ref,
+				source: "public-suggestion-submit",
+				state: nextState
+			});
+
+			sendJson(res, saveResult.ok ? 200 : 500, saveResult);
+			return;
+		}
+
+		if (pathname === "/" || pathname === "/public" || pathname.startsWith("/public/")) {
+			await servePublicPage(res, requestUrl);
+			return;
+		}
+
+		const filePath = path.normalize(path.join(getWorkspaceRoot(), pathname));
+		if (!filePath.startsWith(getWorkspaceRoot())) {
+			res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+			res.end("Forbidden");
+			return;
+		}
+
+		await serveFile(res, filePath);
+	});
+
+	return new Promise((resolve, reject) => {
+		publicServer.once("error", reject);
+		publicServer.listen(publicServerPort, "0.0.0.0", () => {
+			publicServer.removeListener("error", reject);
+			resolve(publicServer);
+		});
+	});
+}
 
 
 async function createMainWindow() {
@@ -386,6 +569,19 @@ ipcMain.handle("auth:complete-password-reset", async (_event, payload) => {
 });
 
 app.whenReady().then(() => {
+	startPublicServer()
+		.then(() => {
+			const addresses = getLocalNetworkAddresses();
+			const hostList = addresses.length ? addresses : ["127.0.0.1"];
+			console.log(`[Public Access] http://${hostList[0]}:${publicServerPort}/public`);
+			hostList.slice(1).forEach((address) => {
+				console.log(`[Public Access] http://${address}:${publicServerPort}/public`);
+			});
+		})
+		.catch((error) => {
+			console.error("Failed to start local public server:", error);
+		});
+
 	createMainWindow();
 
 	app.on("activate", () => {
